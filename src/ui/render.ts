@@ -59,6 +59,7 @@ function renderItem(item: TabItem): HTMLElement {
     label.className = "tab-cell__label";
     label.textContent = result.entry.label;
     cell.appendChild(label);
+
     return cell;
   }
 

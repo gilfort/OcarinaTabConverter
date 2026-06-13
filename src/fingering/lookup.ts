@@ -1,5 +1,6 @@
 import type { Note } from "../notes/types";
 import { chart12Hole, ocarinaType12Hole } from "./chart12Hole";
+import { chartDouble, ocarinaTypeDouble } from "./chartDouble";
 import { normalizeNote, normalizedNotesEqual, toAbsoluteSemitone } from "./normalize";
 import type { FingeringChartEntry, FingeringResult, OcarinaType, OcarinaTypeId } from "./types";
 
@@ -10,7 +11,7 @@ interface OcarinaDefinition {
 
 const REGISTRY: Record<OcarinaTypeId, OcarinaDefinition | undefined> = {
   "12hole": { type: ocarinaType12Hole, chart: chart12Hole },
-  double: undefined,
+  double: { type: ocarinaTypeDouble, chart: chartDouble },
 };
 
 export const supportedOcarinaTypes: OcarinaType[] = Object.values(REGISTRY)

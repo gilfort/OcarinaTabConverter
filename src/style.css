@@ -18,6 +18,13 @@ h1 {
   margin: 0;
 }
 
+#ocarina-type {
+  font-size: 1rem;
+  padding: 0.35rem;
+  width: fit-content;
+  margin-bottom: 5px;
+}
+
 #note-input {
   font-size: 1.1rem;
   padding: 0.5rem;
@@ -29,6 +36,10 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+  background-color: #f5efe0;
+  border-radius: 4px;
+  padding: 1rem;
+  padding-top: calc(1rem + 10px);
 }
 
 .tab-placeholder {
@@ -50,12 +61,39 @@ h1 {
 
 .tab-cell__label {
   font-weight: 600;
+  color: #000;
+}
+
+.tab-cell--error,
+.tab-cell--unsupported,
+.tab-cell--out-of-range {
+  border: 2px solid;
+  border-radius: 4px;
+  padding: 0.5rem;
 }
 
 .tab-cell--error .tab-cell__message,
 .tab-cell--unsupported .tab-cell__message,
 .tab-cell--out-of-range .tab-cell__message {
-  color: #c0392b;
   font-size: 0.9rem;
   text-align: center;
+}
+
+.tab-cell--error,
+.tab-cell--unsupported {
+  border-color: #c0392b;
+}
+
+.tab-cell--error .tab-cell__message,
+.tab-cell--unsupported .tab-cell__message {
+  color: #c0392b;
+}
+
+.tab-cell--out-of-range {
+  border-color: #e67e22;
+  border-style: dashed;
+}
+
+.tab-cell--out-of-range .tab-cell__message {
+  color: #e67e22;
 }

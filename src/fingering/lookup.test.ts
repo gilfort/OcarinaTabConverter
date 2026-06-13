@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lookupFingering } from "./lookup";
+import type { OcarinaTypeId } from "./types";
 
 describe("lookupFingering", () => {
   it("finds a chart entry for a note within range", () => {
@@ -32,7 +33,7 @@ describe("lookupFingering", () => {
   });
 
   it("reports unsupported for an unregistered ocarina type", () => {
-    const result = lookupFingering({ pitchClass: "C", accidental: null, octave: 4 }, "double");
+    const result = lookupFingering({ pitchClass: "C", accidental: null, octave: 4 }, "triple" as OcarinaTypeId);
     expect(result.status).toBe("unsupported");
   });
 });

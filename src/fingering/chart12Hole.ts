@@ -45,4 +45,5 @@ export const ocarinaType12Hole: OcarinaType = {
     min: { pitchClass: "A", accidental: null, octave: 3 },
     max: { pitchClass: "F", accidental: null, octave: 5 },
   },
+  chamberCount: 1,
 };
