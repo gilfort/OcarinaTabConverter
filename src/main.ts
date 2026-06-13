@@ -13,13 +13,17 @@ app.innerHTML = `
       .map((type) => `<option value="${type.id}">${type.displayName}</option>`)
       .join("")}
   </select>
-  <input id="note-input" type="text" placeholder="e.g. C4" autocomplete="off" />
+  <div id="note-input-row">
+    <input id="note-input" type="text" placeholder="e.g. C4 D4 E4" autocomplete="off" />
+    <button id="clear-button" type="button">Clear</button>
+  </div>
   <div id="tab-output"></div>
 `;
 
 const typeSelect = app.querySelector<HTMLSelectElement>("#ocarina-type")!;
 const input = app.querySelector<HTMLInputElement>("#note-input")!;
 const output = app.querySelector<HTMLDivElement>("#tab-output")!;
+const clearButton = app.querySelector<HTMLButtonElement>("#clear-button")!;
 
 const VALIDATION_DEBOUNCE_MS = 200;
 
@@ -36,4 +40,10 @@ input.addEventListener("input", () => {
   debounceTimer = setTimeout(update, VALIDATION_DEBOUNCE_MS);
 });
 typeSelect.addEventListener("change", update);
+clearButton.addEventListener("click", () => {
+  clearTimeout(debounceTimer);
+  input.value = "";
+  update();
+  input.focus();
+});
 update();

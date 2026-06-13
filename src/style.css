@@ -25,11 +25,23 @@ h1 {
   margin-bottom: 5px;
 }
 
+#note-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
 #note-input {
   font-size: 1.1rem;
   padding: 0.5rem;
   width: 100%;
   box-sizing: border-box;
+}
+
+#clear-button {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 #tab-output {
