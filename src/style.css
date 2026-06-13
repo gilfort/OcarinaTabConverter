@@ -56,7 +56,7 @@ h1 {
   flex-shrink: 0;
 }
 
-#tab-output {
+.tab-output {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
@@ -156,6 +156,58 @@ h1 {
 
 .tab-legend__symbol--open {
   background-color: #fff;
+}
+
+#export-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+#export-format {
+  font-size: 1rem;
+  padding: 0.35rem;
+}
+
+#export-button {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+#export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#export-capture {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+}
+
+#export-warning-dialog {
+  max-width: 28rem;
+  border: none;
+  border-radius: 4px;
+  padding: 1.25rem;
+}
+
+#export-warning-dialog::backdrop {
+  background-color: rgb(0 0 0 / 0.4);
+}
+
+.export-warning__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.export-warning__actions button {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
 }
 
 @media (max-width: 480px) {
