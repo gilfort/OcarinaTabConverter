@@ -49,3 +49,9 @@ export function normalizeNote(note: Note): NormalizedNote {
 export function normalizedNotesEqual(a: NormalizedNote, b: NormalizedNote): boolean {
   return a.pitchClass === b.pitchClass && a.accidental === b.accidental && a.octave === b.octave;
 }
+
+/** Formats a normalized note as a display label, e.g. "A3" or "C#5". */
+export function formatNormalizedNote(note: NormalizedNote): string {
+  const accidental = note.accidental === "sharp" ? "#" : "";
+  return `${note.pitchClass}${accidental}${note.octave}`;
+}

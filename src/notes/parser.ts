@@ -1,8 +1,11 @@
 import type { Accidental, Note, ParseResult, ParsedToken, PitchClass } from "./types";
 
-const NOTE_PATTERN = /^([A-Ga-g])([#b]?)(-?\d+)$/;
+const NOTE_PATTERN = /^([A-Ga-g])([#b]?)(-?\d+)?$/;
 
 const PITCH_CLASSES: readonly PitchClass[] = ["A", "B", "C", "D", "E", "F", "G"];
+
+/** Octave assumed when a note is entered without one, e.g. "C" or "C#". */
+const DEFAULT_OCTAVE = 4;
 
 function toAccidental(symbol: string): Accidental | null {
   if (symbol === "#") return "sharp";
@@ -31,7 +34,7 @@ export function parseNoteToken(raw: string): { note: Note | null; error: string 
     note: {
       pitchClass,
       accidental: toAccidental(accidentalSymbol),
-      octave: Number.parseInt(octaveText, 10),
+      octave: octaveText !== undefined ? Number.parseInt(octaveText, 10) : DEFAULT_OCTAVE,
     },
     error: null,
   };

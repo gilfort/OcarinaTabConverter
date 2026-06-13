@@ -18,6 +18,18 @@ h1 {
   margin: 0;
 }
 
+#supported-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.supported-types__label {
+  font-weight: 600;
+}
+
 #ocarina-type {
   font-size: 1rem;
   padding: 0.35rem;

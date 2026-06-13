@@ -24,6 +24,21 @@ describe("parseNotes", () => {
     expect(result.tokens.every((t) => t.note !== null)).toBe(true);
   });
 
+  it("defaults to octave 4 when no octave is given", () => {
+    const result = parseNotes("C");
+    expect(result.tokens[0]).toMatchObject({
+      raw: "C",
+      note: { pitchClass: "C", accidental: null, octave: 4 },
+      error: null,
+    });
+  });
+
+  it("defaults to octave 4 for a sharp/flat note with no octave", () => {
+    const result = parseNotes("C# Db");
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "C", accidental: "sharp", octave: 4 });
+    expect(result.tokens[1].note).toMatchObject({ pitchClass: "D", accidental: "flat", octave: 4 });
+  });
+
   it("reports an error for an invalid note token", () => {
     const result = parseNotes("H4");
     expect(result.tokens).toHaveLength(1);

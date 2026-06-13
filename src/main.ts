@@ -1,4 +1,5 @@
 import "./style.css";
+import { formatNormalizedNote } from "./fingering/normalize";
 import { supportedOcarinaTypes } from "./fingering/lookup";
 import type { OcarinaTypeId } from "./fingering/types";
 import { parseNotes } from "./notes/parser";
@@ -7,6 +8,17 @@ import { buildTabItems, renderTab } from "./ui/render";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <h1>Ocarina Tab Converter</h1>
+  <div id="supported-types">
+    <span class="supported-types__label">Supported ocarinas:</span>
+    ${supportedOcarinaTypes
+      .map(
+        (type) =>
+          `<span class="supported-types__item">${type.displayName} (${formatNormalizedNote(
+            type.range.min
+          )}–${formatNormalizedNote(type.range.max)})</span>`
+      )
+      .join("")}
+  </div>
   <label for="ocarina-type">Ocarina type</label>
   <select id="ocarina-type">
     ${supportedOcarinaTypes
