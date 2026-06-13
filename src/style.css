@@ -109,3 +109,39 @@ h1 {
 .tab-cell--out-of-range .tab-cell__message {
   color: #e67e22;
 }
+
+.tab-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  border-top: 1px solid #ddccaa;
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #000;
+}
+
+.tab-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tab-legend__symbol {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid #000;
+  box-sizing: border-box;
+}
+
+.tab-legend__symbol--covered {
+  background-color: #4d62e9;
+}
+
+.tab-legend__symbol--open {
+  background-color: #fff;
+}

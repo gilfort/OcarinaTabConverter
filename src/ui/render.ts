@@ -31,6 +31,35 @@ export function renderTab(container: HTMLElement, items: TabItem[]): void {
   for (const item of items) {
     container.appendChild(renderItem(item));
   }
+
+  if (items.some((item) => item.result?.status === "found")) {
+    container.appendChild(renderLegend());
+  }
+}
+
+/** Builds the legend explaining the hole symbols used in fingering diagrams. */
+function renderLegend(): HTMLElement {
+  const legend = document.createElement("div");
+  legend.className = "tab-legend";
+
+  for (const [symbolClass, text] of [
+    ["tab-legend__symbol--covered", "Covered hole"],
+    ["tab-legend__symbol--open", "Open hole"],
+  ] as const) {
+    const item = document.createElement("div");
+    item.className = "tab-legend__item";
+
+    const symbol = document.createElement("span");
+    symbol.className = `tab-legend__symbol ${symbolClass}`;
+
+    const label = document.createElement("span");
+    label.textContent = text;
+
+    item.append(symbol, label);
+    legend.appendChild(item);
+  }
+
+  return legend;
 }
 
 function renderItem(item: TabItem): HTMLElement {
