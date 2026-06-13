@@ -26,6 +26,12 @@ const output = app.querySelector<HTMLDivElement>("#tab-output")!;
 const clearButton = app.querySelector<HTMLButtonElement>("#clear-button")!;
 
 const VALIDATION_DEBOUNCE_MS = 200;
+const OCARINA_TYPE_STORAGE_KEY = "ocarinaType";
+
+const storedOcarinaType = localStorage.getItem(OCARINA_TYPE_STORAGE_KEY);
+if (storedOcarinaType && supportedOcarinaTypes.some((type) => type.id === storedOcarinaType)) {
+  typeSelect.value = storedOcarinaType;
+}
 
 function update(): void {
   const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
@@ -39,7 +45,10 @@ input.addEventListener("input", () => {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(update, VALIDATION_DEBOUNCE_MS);
 });
-typeSelect.addEventListener("change", update);
+typeSelect.addEventListener("change", () => {
+  localStorage.setItem(OCARINA_TYPE_STORAGE_KEY, typeSelect.value);
+  update();
+});
 clearButton.addEventListener("click", () => {
   clearTimeout(debounceTimer);
   input.value = "";
