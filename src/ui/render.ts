@@ -127,10 +127,17 @@ function renderLegend(): HTMLElement {
   return legend;
 }
 
-/** Builds the line shown above an eighth-note/rest cell to indicate it's played faster. */
-function renderFastMarker(): HTMLElement {
+/**
+ * Builds the line shown above a cell to indicate an eighth note/rest (played faster).
+ * Always rendered (transparent when `active` is false) so every cell reserves the
+ * same space above its diagram/rest, keeping images bottom-aligned across the row.
+ */
+function renderFastMarker(active: boolean): HTMLElement {
   const marker = document.createElement("span");
   marker.className = "tab-cell__fast-marker";
+  if (active) {
+    marker.classList.add("tab-cell__fast-marker--active");
+  }
   return marker;
 }
 
@@ -146,10 +153,7 @@ function renderItem(
   if (item.token.rest) {
     const length = resolveNoteLength(item.lengthOverride, item.token.rest);
     cell.classList.add("tab-cell--rest", `tab-cell--${length}`);
-
-    if (length === "eighth") {
-      cell.appendChild(renderFastMarker());
-    }
+    cell.appendChild(renderFastMarker(length === "eighth"));
 
     const visual = document.createElement("div");
     visual.className = "tab-cell__visual";
@@ -194,10 +198,7 @@ function renderItem(
   if (result.status === "found") {
     const length = resolveNoteLength(item.lengthOverride, defaultNoteLength);
     cell.classList.add(`tab-cell--${length}`);
-
-    if (length === "eighth") {
-      cell.appendChild(renderFastMarker());
-    }
+    cell.appendChild(renderFastMarker(length === "eighth"));
 
     const visual = document.createElement("div");
     visual.className = "tab-cell__visual";

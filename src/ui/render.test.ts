@@ -74,18 +74,19 @@ describe("renderTab note lengths", () => {
     expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(3);
   });
 
-  it("renders an eighth note with the eighth class, a fast marker, and no dashes", () => {
+  it("renders an eighth note with the eighth class, an active fast marker, and no dashes", () => {
     const cell = renderSingleNote("eighth");
 
     expect(cell.classList.contains("tab-cell--eighth")).toBe(true);
-    expect(cell.querySelector(".tab-cell__fast-marker")).not.toBeNull();
+    expect(cell.querySelector(".tab-cell__fast-marker--active")).not.toBeNull();
     expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(0);
   });
 
-  it("does not render a fast marker for non-eighth notes", () => {
+  it("renders an inactive fast marker (reserving space) for non-eighth notes", () => {
     const cell = renderSingleNote("quarter");
 
-    expect(cell.querySelector(".tab-cell__fast-marker")).toBeNull();
+    expect(cell.querySelector(".tab-cell__fast-marker")).not.toBeNull();
+    expect(cell.querySelector(".tab-cell__fast-marker--active")).toBeNull();
   });
 
   it("includes the eighth-note line marker in the legend", () => {
@@ -151,11 +152,11 @@ describe("renderTab rests", () => {
     expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(3);
   });
 
-  it("renders an eighth rest with the eighth class, a fast marker, and no dashes", () => {
+  it("renders an eighth rest with the eighth class, an active fast marker, and no dashes", () => {
     const cell = renderRest("R8");
 
     expect(cell.classList.contains("tab-cell--eighth")).toBe(true);
-    expect(cell.querySelector(".tab-cell__fast-marker")).not.toBeNull();
+    expect(cell.querySelector(".tab-cell__fast-marker--active")).not.toBeNull();
     expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(0);
   });
 
