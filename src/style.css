@@ -81,6 +81,26 @@ h1 {
   margin: 0;
 }
 
+#save-load-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#save-button,
+.button-label {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.button-label {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #767676;
+  border-radius: 4px;
+  background: #f0f0f0;
+}
+
 #title-input-row {
   display: flex;
   align-items: center;

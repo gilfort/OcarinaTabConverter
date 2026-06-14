@@ -54,6 +54,13 @@ app.innerHTML = `
   </div>
   <div id="midi-drop-zone" class="midi-drop-zone">Drop a .mid/.midi file here to import notes</div>
   <p id="midi-error" class="midi-error" hidden></p>
+  <div id="save-load-row">
+    <button id="save-button" type="button">Save</button>
+    <label for="load-file-input" id="load-button" class="button-label">Load</label>
+    <input id="load-file-input" type="file" accept=".txt" hidden />
+  </div>
+  <div id="load-drop-zone" class="midi-drop-zone">Drop a saved .txt file here to load</div>
+  <p id="load-error" class="midi-error" hidden></p>
   <div id="title-input-row">
     <label for="title-input">Title</label>
     <input id="title-input" type="text" placeholder="Untitled" autocomplete="off" />
@@ -102,6 +109,10 @@ const midiFileInput = app.querySelector<HTMLInputElement>("#midi-file-input")!;
 const midiDropZone = app.querySelector<HTMLDivElement>("#midi-drop-zone")!;
 const midiTrackSelect = app.querySelector<HTMLSelectElement>("#midi-track-select")!;
 const midiError = app.querySelector<HTMLParagraphElement>("#midi-error")!;
+const saveButton = app.querySelector<HTMLButtonElement>("#save-button")!;
+const loadFileInput = app.querySelector<HTMLInputElement>("#load-file-input")!;
+const loadDropZone = app.querySelector<HTMLDivElement>("#load-drop-zone")!;
+const loadError = app.querySelector<HTMLParagraphElement>("#load-error")!;
 
 const VALIDATION_DEBOUNCE_MS = 200;
 const OCARINA_TYPE_STORAGE_KEY = "ocarinaType";
@@ -341,6 +352,79 @@ midiDropZone.addEventListener("drop", (event) => {
   const file = event.dataTransfer?.files?.[0];
   if (file) {
     void handleMidiFile(file);
+  }
+});
+
+function showLoadError(message: string): void {
+  loadError.textContent = message;
+  loadError.hidden = false;
+}
+
+function clearLoadError(): void {
+  loadError.hidden = true;
+}
+
+saveButton.addEventListener("click", async () => {
+  const { buildExportFilename } = await import("./export/filename");
+  const { serializeSaveData, downloadSaveFile } = await import("./save/io");
+
+  const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
+  const content = serializeSaveData({
+    title: titleInput.value,
+    ocarinaType: ocarinaTypeId,
+    notes: input.value,
+    lengthOverrides: currentItems.map((item) => item.lengthOverride),
+  });
+  const filename = `${buildExportFilename(titleInput.value, ocarinaTypeId)}.txt`;
+  downloadSaveFile(filename, content);
+});
+
+/** Restores a saved piece's title, ocarina type, notes, and per-note length overrides into the app. */
+async function handleSaveFile(file: File): Promise<void> {
+  clearLoadError();
+
+  const text = await file.text();
+  const { isSaveParseError, parseSaveData } = await import("./save/io");
+  const result = parseSaveData(text);
+  if (isSaveParseError(result)) {
+    showLoadError(result.error);
+    return;
+  }
+
+  titleInput.value = result.title;
+  typeSelect.value = result.ocarinaType;
+  localStorage.setItem(OCARINA_TYPE_STORAGE_KEY, typeSelect.value);
+  input.value = result.notes;
+  update();
+  result.lengthOverrides.forEach((override, index) => {
+    if (currentItems[index]) {
+      currentItems[index].lengthOverride = override;
+    }
+  });
+  rerender();
+}
+
+loadFileInput.addEventListener("change", () => {
+  const file = loadFileInput.files?.[0];
+  if (file) {
+    void handleSaveFile(file);
+  }
+  loadFileInput.value = "";
+});
+
+loadDropZone.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  loadDropZone.classList.add("midi-drop-zone--active");
+});
+loadDropZone.addEventListener("dragleave", () => {
+  loadDropZone.classList.remove("midi-drop-zone--active");
+});
+loadDropZone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  loadDropZone.classList.remove("midi-drop-zone--active");
+  const file = event.dataTransfer?.files?.[0];
+  if (file) {
+    void handleSaveFile(file);
   }
 });
 
