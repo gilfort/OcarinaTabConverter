@@ -1,6 +1,7 @@
 :root {
   font-family: system-ui, sans-serif;
   color-scheme: light dark;
+  --tab-unit-width: 96px;
 }
 
 body {
@@ -35,6 +36,18 @@ h1 {
   padding: 0.35rem;
   width: fit-content;
   margin-bottom: 5px;
+}
+
+#settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 5px;
+}
+
+#default-note-length {
+  font-size: 1rem;
+  padding: 0.35rem;
 }
 
 #note-input-row {
@@ -78,14 +91,36 @@ h1 {
   min-width: 96px;
 }
 
+.tab-cell__visual {
+  display: flex;
+  align-items: center;
+}
+
 .tab-cell__image {
-  width: 96px;
+  width: var(--tab-unit-width);
   height: auto;
+}
+
+.tab-cell--eighth .tab-cell__image {
+  width: calc(var(--tab-unit-width) / 2);
+}
+
+.tab-cell__dash {
+  width: var(--tab-unit-width);
+  height: 4px;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .tab-cell__label {
   font-weight: 600;
   color: #000;
+}
+
+.tab-cell__length {
+  font-size: 0.85rem;
+  padding: 0.2rem;
+  margin-top: 0.25rem;
 }
 
 .tab-cell--error,

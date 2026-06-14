@@ -2,10 +2,26 @@ import type { ParsedToken } from "../notes/types";
 import type { FingeringResult } from "../fingering/types";
 import { lookupFingering } from "../fingering/lookup";
 import type { OcarinaTypeId } from "../fingering/types";
+import {
+  NOTE_LENGTHS,
+  NOTE_LENGTH_LABELS,
+  NOTE_LENGTH_UNITS,
+  resolveNoteLength,
+  type NoteLength,
+  type NoteLengthOverride,
+} from "../notes/length";
 
 export interface TabItem {
   token: ParsedToken;
   result: FingeringResult | null;
+  /** "default" inherits the globally selected default note length. */
+  lengthOverride: NoteLengthOverride;
+}
+
+export interface RenderTabOptions {
+  /** When true, render per-note length selectors (omit for export captures). */
+  interactive: boolean;
+  onLengthChange?: (index: number, value: NoteLengthOverride) => void;
 }
 
 /** Looks up fingering results for every successfully-parsed token in a sequence. */
@@ -13,11 +29,17 @@ export function buildTabItems(tokens: ParsedToken[], ocarinaTypeId: OcarinaTypeI
   return tokens.map((token) => ({
     token,
     result: token.note ? lookupFingering(token.note, ocarinaTypeId) : null,
+    lengthOverride: "default",
   }));
 }
 
 /** Renders a sequence of tab items (diagram + label, or error/marker) into the given container. */
-export function renderTab(container: HTMLElement, items: TabItem[]): void {
+export function renderTab(
+  container: HTMLElement,
+  items: TabItem[],
+  defaultNoteLength: NoteLength,
+  options: RenderTabOptions
+): void {
   container.innerHTML = "";
 
   if (items.length === 0) {
@@ -28,13 +50,43 @@ export function renderTab(container: HTMLElement, items: TabItem[]): void {
     return;
   }
 
-  for (const item of items) {
-    container.appendChild(renderItem(item));
-  }
+  items.forEach((item, index) => {
+    container.appendChild(renderItem(item, index, defaultNoteLength, options));
+  });
 
   if (items.some((item) => item.result?.status === "found")) {
     container.appendChild(renderLegend());
   }
+}
+
+/** Builds the per-note length override selector shown below each found note. */
+function renderLengthSelect(
+  value: NoteLengthOverride,
+  index: number,
+  onLengthChange: RenderTabOptions["onLengthChange"]
+): HTMLSelectElement {
+  const select = document.createElement("select");
+  select.className = "tab-cell__length";
+  select.setAttribute("aria-label", "Note length");
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "default";
+  defaultOption.textContent = "Default";
+  select.appendChild(defaultOption);
+
+  for (const length of NOTE_LENGTHS) {
+    const option = document.createElement("option");
+    option.value = length;
+    option.textContent = NOTE_LENGTH_LABELS[length];
+    select.appendChild(option);
+  }
+
+  select.value = value;
+  select.addEventListener("change", () => {
+    onLengthChange?.(index, select.value as NoteLengthOverride);
+  });
+
+  return select;
 }
 
 /** Builds the legend explaining the hole symbols used in fingering diagrams. */
@@ -62,7 +114,12 @@ function renderLegend(): HTMLElement {
   return legend;
 }
 
-function renderItem(item: TabItem): HTMLElement {
+function renderItem(
+  item: TabItem,
+  index: number,
+  defaultNoteLength: NoteLength,
+  options: RenderTabOptions
+): HTMLElement {
   const cell = document.createElement("div");
   cell.className = "tab-cell";
 
@@ -78,16 +135,35 @@ function renderItem(item: TabItem): HTMLElement {
   const { result } = item;
 
   if (result.status === "found") {
+    const length = resolveNoteLength(item.lengthOverride, defaultNoteLength);
+    cell.classList.add(`tab-cell--${length}`);
+
+    const visual = document.createElement("div");
+    visual.className = "tab-cell__visual";
+
     const img = document.createElement("img");
     img.className = "tab-cell__image";
     img.src = result.entry.image;
     img.alt = `Fingering diagram for ${result.entry.label}`;
-    cell.appendChild(img);
+    visual.appendChild(img);
+
+    const dashCount = NOTE_LENGTH_UNITS[length] - 1;
+    for (let i = 0; i < dashCount; i++) {
+      const dash = document.createElement("span");
+      dash.className = "tab-cell__dash";
+      visual.appendChild(dash);
+    }
+
+    cell.appendChild(visual);
 
     const label = document.createElement("p");
     label.className = "tab-cell__label";
     label.textContent = result.entry.label;
     cell.appendChild(label);
+
+    if (options.interactive) {
+      cell.appendChild(renderLengthSelect(item.lengthOverride, index, options.onLengthChange));
+    }
 
     return cell;
   }

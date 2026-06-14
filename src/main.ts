@@ -6,6 +6,13 @@ import type { ExportFormat } from "./export/exporter";
 import { shiftNoteIntoRange } from "./export/octaveShift";
 import { parseNotes } from "./notes/parser";
 import type { Note } from "./notes/types";
+import {
+  DEFAULT_NOTE_LENGTH,
+  NOTE_LENGTHS,
+  NOTE_LENGTH_LABELS,
+  type NoteLength,
+  type NoteLengthOverride,
+} from "./notes/length";
 import { buildTabItems, renderTab, type TabItem } from "./ui/render";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -28,6 +35,15 @@ app.innerHTML = `
       .map((type) => `<option value="${type.id}">${type.displayName}</option>`)
       .join("")}
   </select>
+  <div id="settings-row">
+    <label for="default-note-length">Default note length</label>
+    <select id="default-note-length">
+      ${NOTE_LENGTHS.map(
+        (length) =>
+          `<option value="${length}"${length === DEFAULT_NOTE_LENGTH ? " selected" : ""}>${NOTE_LENGTH_LABELS[length]}</option>`
+      ).join("")}
+    </select>
+  </div>
   <div id="note-input-row">
     <input id="note-input" type="text" placeholder="e.g. C4 D4 E4" autocomplete="off" />
     <button id="clear-button" type="button">Clear</button>
@@ -56,6 +72,7 @@ app.innerHTML = `
 `;
 
 const typeSelect = app.querySelector<HTMLSelectElement>("#ocarina-type")!;
+const defaultLengthSelect = app.querySelector<HTMLSelectElement>("#default-note-length")!;
 const input = app.querySelector<HTMLInputElement>("#note-input")!;
 const output = app.querySelector<HTMLDivElement>("#tab-output")!;
 const clearButton = app.querySelector<HTMLButtonElement>("#clear-button")!;
@@ -69,19 +86,44 @@ const exportCancelButton = app.querySelector<HTMLButtonElement>("#export-cancel-
 
 const VALIDATION_DEBOUNCE_MS = 200;
 const OCARINA_TYPE_STORAGE_KEY = "ocarinaType";
+const DEFAULT_NOTE_LENGTH_STORAGE_KEY = "defaultNoteLength";
 
 const storedOcarinaType = localStorage.getItem(OCARINA_TYPE_STORAGE_KEY);
 if (storedOcarinaType && supportedOcarinaTypes.some((type) => type.id === storedOcarinaType)) {
   typeSelect.value = storedOcarinaType;
 }
 
+const storedDefaultNoteLength = localStorage.getItem(DEFAULT_NOTE_LENGTH_STORAGE_KEY);
+if (storedDefaultNoteLength && (NOTE_LENGTHS as readonly string[]).includes(storedDefaultNoteLength)) {
+  defaultLengthSelect.value = storedDefaultNoteLength;
+}
+
 let currentItems: TabItem[] = [];
+
+function defaultNoteLength(): NoteLength {
+  return defaultLengthSelect.value as NoteLength;
+}
+
+function onLengthChange(index: number, value: NoteLengthOverride): void {
+  currentItems[index].lengthOverride = value;
+  rerender();
+}
+
+function rerender(): void {
+  renderTab(output, currentItems, defaultNoteLength(), { interactive: true, onLengthChange });
+}
 
 function update(): void {
   const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
   const { tokens } = parseNotes(input.value);
+  const previousOverrides = currentItems.map((item) => item.lengthOverride);
   currentItems = buildTabItems(tokens, ocarinaTypeId);
-  renderTab(output, currentItems);
+  currentItems.forEach((item, index) => {
+    if (previousOverrides[index] !== undefined) {
+      item.lengthOverride = previousOverrides[index];
+    }
+  });
+  rerender();
   exportButton.disabled = !currentItems.some((item) => item.result?.status === "found");
 }
 
@@ -93,6 +135,10 @@ input.addEventListener("input", () => {
 typeSelect.addEventListener("change", () => {
   localStorage.setItem(OCARINA_TYPE_STORAGE_KEY, typeSelect.value);
   update();
+});
+defaultLengthSelect.addEventListener("change", () => {
+  localStorage.setItem(DEFAULT_NOTE_LENGTH_STORAGE_KEY, defaultLengthSelect.value);
+  rerender();
 });
 clearButton.addEventListener("click", () => {
   clearTimeout(debounceTimer);
@@ -158,6 +204,7 @@ function resolveOutOfRangeItems(items: TabItem[], choice: "shift" | "strip", oca
 
     return [
       {
+        ...item,
         token: { ...item.token, note: shifted, raw: formatNote(shifted) },
         result: lookupFingering(shifted, ocarinaTypeId),
       },
@@ -181,7 +228,7 @@ exportButton.addEventListener("click", async () => {
   try {
     const { exportElement } = await import("./export/exporter");
     exportCapture.style.width = `${output.offsetWidth}px`;
-    renderTab(exportCapture, exportItems);
+    renderTab(exportCapture, exportItems, defaultNoteLength(), { interactive: false });
     await exportElement(exportCapture, exportFormatSelect.value as ExportFormat, "ocarina-tab");
   } finally {
     exportCapture.innerHTML = "";
