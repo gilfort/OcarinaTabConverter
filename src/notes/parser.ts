@@ -1,7 +1,7 @@
-import type { Accidental, Note, ParseResult, ParsedToken, PitchClass } from "./types";
+import type { Accidental, KeySignature, Note, ParseResult, ParsedToken, PitchClass } from "./types";
 import { DEFAULT_NOTE_LENGTH, REST_LENGTH_CODES, type NoteLength } from "./length";
 
-const NOTE_PATTERN = /^([A-Ga-g])([#b]?)(-?\d+)?$/;
+const NOTE_PATTERN = /^([A-Ga-g])([#bnN]?)(-?\d+)?$/;
 const REST_PATTERN = /^[Rr](\d+)?$/;
 
 const PITCH_CLASSES: readonly PitchClass[] = ["A", "B", "C", "D", "E", "F", "G"];
@@ -9,17 +9,26 @@ const PITCH_CLASSES: readonly PitchClass[] = ["A", "B", "C", "D", "E", "F", "G"]
 /** Octave assumed when a note is entered without one, e.g. "C" or "C#". */
 const DEFAULT_OCTAVE = 4;
 
-function toAccidental(symbol: string): Accidental | null {
+/** An explicit accidental symbol from input text: "#"/"b" set an accidental, "n"/"N" forces natural. */
+type AccidentalSymbol = Accidental | "natural" | null;
+
+function toAccidentalSymbol(symbol: string): AccidentalSymbol {
   if (symbol === "#") return "sharp";
   if (symbol === "b") return "flat";
+  if (symbol === "n" || symbol === "N") return "natural";
   return null;
 }
 
 /**
- * Parses a single note token (e.g. "C4", "C#4", "Db4") into a `Note`.
- * Returns an error message if the token is not a valid note name.
+ * Parses a single note token (e.g. "C4", "C#4", "Db4", "Cn4") into a `Note`.
+ * A token with no accidental symbol takes its accidental from `keySignature` (if given), while
+ * an explicit "#"/"b" overrides it and "n"/"N" forces the note natural regardless of the key
+ * signature. Returns an error message if the token is not a valid note name.
  */
-export function parseNoteToken(raw: string): { note: Note | null; error: string | null } {
+export function parseNoteToken(
+  raw: string,
+  keySignature?: KeySignature
+): { note: Note | null; error: string | null } {
   const trimmed = raw.trim();
   const match = NOTE_PATTERN.exec(trimmed);
   if (!match) {
@@ -32,10 +41,14 @@ export function parseNoteToken(raw: string): { note: Note | null; error: string 
     return { note: null, error: `"${raw}" has an unknown pitch class "${letter}"` };
   }
 
+  const symbol = toAccidentalSymbol(accidentalSymbol);
+  const accidental: Accidental | null =
+    symbol === "natural" ? null : symbol !== null ? symbol : keySignature?.[pitchClass] ?? null;
+
   return {
     note: {
       pitchClass,
-      accidental: toAccidental(accidentalSymbol),
+      accidental,
       octave: octaveText !== undefined ? Number.parseInt(octaveText, 10) : DEFAULT_OCTAVE,
     },
     error: null,
@@ -69,8 +82,11 @@ function parseRestToken(
  * (e.g. "C4, D4 E4") into an ordered list of tokens. Each token carries
  * either a parsed `Note` or an error message, preserving input order so
  * invalid tokens can be flagged without dropping valid neighbors.
+ *
+ * `keySignature`, if given, supplies the default accidental for notes
+ * entered without an explicit "#"/"b"/"n".
  */
-export function parseNotes(input: string): ParseResult {
+export function parseNotes(input: string, keySignature?: KeySignature): ParseResult {
   const rawTokens = input
     .split(/[\s,]+/)
     .map((token) => token.trim())
@@ -83,7 +99,7 @@ export function parseNotes(input: string): ParseResult {
       return { raw, index, note: null, rest, error };
     }
 
-    const { note, error } = parseNoteToken(raw);
+    const { note, error } = parseNoteToken(raw, keySignature);
     return { raw, index, note, rest: null, error };
   });
 

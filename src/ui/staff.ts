@@ -1,4 +1,4 @@
-import type { Note, PitchClass } from "../notes/types";
+import type { KeySignature, Note, PitchClass } from "../notes/types";
 import { normalizeNote } from "../fingering/normalize";
 import type { TabItem } from "./render";
 
@@ -21,6 +21,30 @@ const STAFF_TOP_STEP = 8;
 const NOTE_SPACING = 29;
 const CLEF_WIDTH = 53;
 const LEFT_MARGIN = 14;
+const KEY_SIG_GLYPH_WIDTH = 10;
+const KEY_SIG_START_OFFSET = 4;
+
+/** Treble-clef key signature positions for sharps, in standard left-to-right order (F C G D A E B). */
+const SHARP_KEY_SIGNATURE_ORDER: ReadonlyArray<{ pitchClass: PitchClass; octave: number }> = [
+  { pitchClass: "F", octave: 5 },
+  { pitchClass: "C", octave: 5 },
+  { pitchClass: "G", octave: 5 },
+  { pitchClass: "D", octave: 5 },
+  { pitchClass: "A", octave: 4 },
+  { pitchClass: "E", octave: 5 },
+  { pitchClass: "B", octave: 4 },
+];
+
+/** Treble-clef key signature positions for flats, in standard left-to-right order (B E A D G C F). */
+const FLAT_KEY_SIGNATURE_ORDER: ReadonlyArray<{ pitchClass: PitchClass; octave: number }> = [
+  { pitchClass: "B", octave: 4 },
+  { pitchClass: "E", octave: 5 },
+  { pitchClass: "A", octave: 4 },
+  { pitchClass: "D", octave: 5 },
+  { pitchClass: "G", octave: 4 },
+  { pitchClass: "C", octave: 5 },
+  { pitchClass: "F", octave: 4 },
+];
 const NOTEHEAD_RX = 5.4;
 const NOTEHEAD_RY = 3.84;
 const TOP_PADDING = HALF_STEP + 5;
@@ -126,16 +150,54 @@ function eventToStep(event: MouseEvent, svg: SVGSVGElement): number {
 }
 
 /**
+ * Markup for the key signature, drawn as ♯/♭ glyphs at their conventional staff positions
+ * (e.g. an F-sharp key signature shows ♯ on the top line) starting at `startX`. Returns the
+ * markup and the total width occupied, so callers can reserve space before the first note.
+ */
+function keySignatureGlyphs(keySignature: KeySignature, startX: number): { markup: string; width: number } {
+  const glyphs: string[] = [];
+  let x = startX;
+
+  for (const { pitchClass, octave } of SHARP_KEY_SIGNATURE_ORDER) {
+    if (keySignature[pitchClass] !== "sharp") continue;
+    const y = stepToY(noteToStep({ pitchClass, octave }));
+    glyphs.push(`<text x="${x}" y="${y + 4}" class="staff-input__accidental">♯</text>`);
+    x += KEY_SIG_GLYPH_WIDTH;
+  }
+
+  for (const { pitchClass, octave } of FLAT_KEY_SIGNATURE_ORDER) {
+    if (keySignature[pitchClass] !== "flat") continue;
+    const y = stepToY(noteToStep({ pitchClass, octave }));
+    glyphs.push(`<text x="${x}" y="${y + 4}" class="staff-input__accidental">♭</text>`);
+    x += KEY_SIG_GLYPH_WIDTH;
+  }
+
+  return { markup: glyphs.join(""), width: x - startX };
+}
+
+/**
  * Renders a clickable treble staff (A3-C6) into `container`. The current note sequence (from `items`)
  * is drawn on the staff, and clicking anywhere on it adds a note via `options.onNoteClick`:
  * plain click adds the natural note at that position, Shift adds its sharp, and Ctrl/Cmd adds its
  * flat — flats are always respelled as sharps (e.g. Db -> C#) since flats aren't used elsewhere.
+ * If `keySignature` is given, its sharps/flats are drawn after the clef, like printed sheet music.
  */
-export function renderStaff(container: HTMLElement, items: TabItem[], options: StaffOptions): void {
+export function renderStaff(
+  container: HTMLElement,
+  items: TabItem[],
+  options: StaffOptions,
+  keySignature: KeySignature = {}
+): void {
   const notes = items
     .filter((item): item is TabItem & { token: { note: Note } } => item.token.note !== null)
     .map((item) => ({ note: item.token.note, flatDisplay: item.flatDisplay ?? false }));
-  const width = CLEF_WIDTH + LEFT_MARGIN * 2 + notes.length * NOTE_SPACING;
+
+  const { markup: keySigMarkup, width: keySigWidth } = keySignatureGlyphs(
+    keySignature,
+    CLEF_WIDTH + KEY_SIG_START_OFFSET
+  );
+  const notesStartX = CLEF_WIDTH + keySigWidth + LEFT_MARGIN;
+  const width = notesStartX + LEFT_MARGIN + notes.length * NOTE_SPACING;
 
   const lines: string[] = [];
   for (let step = STAFF_BOTTOM_STEP; step <= STAFF_TOP_STEP; step += 2) {
@@ -152,12 +214,13 @@ export function renderStaff(container: HTMLElement, items: TabItem[], options: S
   const clef = `<text x="4" y="${clefY}" class="staff-input__clef">\u{1D11E}</text>`;
 
   const noteGlyphs = notes
-    .map(({ note, flatDisplay }, index) => noteGlyph(note, CLEF_WIDTH + LEFT_MARGIN + index * NOTE_SPACING, flatDisplay))
+    .map(({ note, flatDisplay }, index) => noteGlyph(note, notesStartX + index * NOTE_SPACING, flatDisplay))
     .join("");
 
   container.innerHTML = `
     <svg viewBox="0 0 ${width} ${SVG_HEIGHT}" class="staff-input__svg" role="img" aria-label="Clickable staff for adding notes">
       ${lines.join("")}
+      ${keySigMarkup}
       ${clef}
       ${noteGlyphs}
       <rect x="0" y="0" width="${width}" height="${SVG_HEIGHT}" class="staff-input__overlay" />
@@ -166,7 +229,7 @@ export function renderStaff(container: HTMLElement, items: TabItem[], options: S
 
   const svg = container.querySelector<SVGSVGElement>("svg")!;
   const overlay = container.querySelector<SVGRectElement>(".staff-input__overlay")!;
-  const previewX = CLEF_WIDTH + LEFT_MARGIN + notes.length * NOTE_SPACING;
+  const previewX = notesStartX + notes.length * NOTE_SPACING;
   let previewGroup: SVGGElement | null = null;
 
   overlay.addEventListener("mousemove", (event) => {

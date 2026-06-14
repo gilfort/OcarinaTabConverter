@@ -1,8 +1,11 @@
 import { supportedOcarinaTypes } from "../fingering/lookup";
 import type { OcarinaTypeId } from "../fingering/types";
 import { NOTE_LENGTHS, type NoteLengthOverride } from "../notes/length";
+import type { Accidental, KeySignature, PitchClass } from "../notes/types";
 
 const SAVE_VERSION = 1;
+
+const PITCH_CLASSES: readonly PitchClass[] = ["A", "B", "C", "D", "E", "F", "G"];
 
 export interface SaveData {
   version: typeof SAVE_VERSION;
@@ -10,6 +13,7 @@ export interface SaveData {
   ocarinaType: OcarinaTypeId;
   notes: string;
   lengthOverrides: NoteLengthOverride[];
+  keySignature: KeySignature;
 }
 
 export interface SaveParseError {
@@ -28,6 +32,20 @@ export function serializeSaveData(data: Omit<SaveData, "version">): string {
 
 function isValidLengthOverride(value: unknown): value is NoteLengthOverride {
   return value === "default" || (NOTE_LENGTHS as readonly string[]).includes(value as string);
+}
+
+function isValidAccidental(value: unknown): value is Accidental {
+  return value === "sharp" || value === "flat";
+}
+
+function isValidKeySignature(value: unknown): value is KeySignature {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return Object.entries(value as Record<string, unknown>).every(
+    ([pitchClass, accidental]) =>
+      (PITCH_CLASSES as readonly string[]).includes(pitchClass) && isValidAccidental(accidental)
+  );
 }
 
 /** Parses a saved piece's JSON text, validating its shape before use. */
@@ -64,12 +82,18 @@ export function parseSaveData(text: string): SaveData | SaveParseError {
     return { error: "File has invalid note length data." };
   }
 
+  const keySignature = data.keySignature ?? {};
+  if (!isValidKeySignature(keySignature)) {
+    return { error: "File has invalid key signature data." };
+  }
+
   return {
     version: SAVE_VERSION,
     title: data.title,
     ocarinaType: data.ocarinaType as OcarinaTypeId,
     notes: data.notes,
     lengthOverrides: data.lengthOverrides as NoteLengthOverride[],
+    keySignature,
   };
 }
 

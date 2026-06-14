@@ -3,6 +3,9 @@ import type { NoteLength } from "./length";
 export type PitchClass = "A" | "B" | "C" | "D" | "E" | "F" | "G";
 export type Accidental = "sharp" | "flat";
 
+/** Maps pitch classes that are always sharp/flat for a piece, applied to notes with no explicit accidental. */
+export type KeySignature = Partial<Record<PitchClass, Accidental>>;
+
 export interface Note {
   pitchClass: PitchClass;
   accidental: Accidental | null;

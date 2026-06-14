@@ -9,6 +9,7 @@ describe("save/load round trip", () => {
       ocarinaType: "12hole" as const,
       notes: "C4 D4 R4 E4",
       lengthOverrides: ["default", "eighth", "default", "half"] as NoteLengthOverride[],
+      keySignature: { F: "sharp", B: "flat" } as const,
     };
 
     const text = serializeSaveData(data);
@@ -20,6 +21,18 @@ describe("save/load round trip", () => {
       expect(result.ocarinaType).toBe(data.ocarinaType);
       expect(result.notes).toBe(data.notes);
       expect(result.lengthOverrides).toEqual(data.lengthOverrides);
+      expect(result.keySignature).toEqual(data.keySignature);
+    }
+  });
+
+  it("defaults keySignature to {} when missing from older save files", () => {
+    const result = parseSaveData(
+      JSON.stringify({ title: "x", ocarinaType: "12hole", notes: "C4", lengthOverrides: [] })
+    );
+
+    expect(isSaveParseError(result)).toBe(false);
+    if (!isSaveParseError(result)) {
+      expect(result.keySignature).toEqual({});
     }
   });
 });
@@ -50,6 +63,19 @@ describe("parseSaveData", () => {
   it("rejects invalid note length overrides", () => {
     const result = parseSaveData(
       JSON.stringify({ title: "x", ocarinaType: "12hole", notes: "C4", lengthOverrides: ["sixteenth"] })
+    );
+    expect(isSaveParseError(result)).toBe(true);
+  });
+
+  it("rejects invalid key signature data", () => {
+    const result = parseSaveData(
+      JSON.stringify({
+        title: "x",
+        ocarinaType: "12hole",
+        notes: "C4",
+        lengthOverrides: [],
+        keySignature: { F: "natural" },
+      })
     );
     expect(isSaveParseError(result)).toBe(true);
   });

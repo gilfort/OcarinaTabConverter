@@ -15,7 +15,8 @@ import {
 } from "./notes/length";
 import { buildTabItems, renderTab, type TabItem } from "./ui/render";
 import { renderStaff } from "./ui/staff";
-import type { Note } from "./notes/types";
+import { formatKeySignatureSummary, renderKeySignaturePicker } from "./ui/keySignature";
+import type { Accidental, KeySignature, Note, PitchClass } from "./notes/types";
 import { isMidiParseError, parseMidiFile } from "./midi/parser";
 import { computeGlobalMinMidiPitch, convertTrackToTokens } from "./midi/convert";
 import type { MidiTrack } from "./midi/types";
@@ -67,6 +68,11 @@ app.innerHTML = `
     <label for="title-input">Title</label>
     <input id="title-input" type="text" placeholder="Untitled" autocomplete="off" />
   </div>
+  <div id="key-signature-row">
+    <button id="key-signature-toggle" type="button" aria-expanded="false">Key signature</button>
+    <span id="key-signature-summary"></span>
+  </div>
+  <div id="key-signature-container" class="key-signature-picker" hidden></div>
   <div id="note-input-row">
     <input id="note-input" type="text" placeholder="e.g. C4 D4 R4 E4" autocomplete="off" />
     <button id="clear-button" type="button">Clear</button>
@@ -99,6 +105,9 @@ app.innerHTML = `
 const typeSelect = app.querySelector<HTMLSelectElement>("#ocarina-type")!;
 const defaultLengthSelect = app.querySelector<HTMLSelectElement>("#default-note-length")!;
 const titleInput = app.querySelector<HTMLInputElement>("#title-input")!;
+const keySignatureToggle = app.querySelector<HTMLButtonElement>("#key-signature-toggle")!;
+const keySignatureContainer = app.querySelector<HTMLDivElement>("#key-signature-container")!;
+const keySignatureSummary = app.querySelector<HTMLSpanElement>("#key-signature-summary")!;
 const input = app.querySelector<HTMLInputElement>("#note-input")!;
 const output = app.querySelector<HTMLDivElement>("#tab-output")!;
 const clearButton = app.querySelector<HTMLButtonElement>("#clear-button")!;
@@ -135,6 +144,27 @@ if (storedDefaultNoteLength && (NOTE_LENGTHS as readonly string[]).includes(stor
 }
 
 let currentItems: TabItem[] = [];
+let keySignature: KeySignature = {};
+
+/** Refreshes the key signature summary text and picker (if open). */
+function renderKeySignatureUI(): void {
+  const summary = formatKeySignatureSummary(keySignature);
+  keySignatureSummary.textContent = summary;
+  if (!keySignatureContainer.hidden) {
+    renderKeySignaturePicker(keySignatureContainer, keySignature, { onToggle: handleKeySignatureToggle });
+  }
+}
+
+/** Updates the key signature when a letter is toggled in the picker, then re-parses the notes. */
+function handleKeySignatureToggle(pitchClass: PitchClass, accidental: Accidental | null): void {
+  if (accidental === null) {
+    delete keySignature[pitchClass];
+  } else {
+    keySignature[pitchClass] = accidental;
+  }
+  renderKeySignatureUI();
+  update();
+}
 
 function defaultNoteLength(): NoteLength {
   return defaultLengthSelect.value as NoteLength;
@@ -148,7 +178,7 @@ function onLengthChange(index: number, value: NoteLengthOverride): void {
 function rerender(): void {
   renderTab(output, currentItems, defaultNoteLength(), { interactive: true, onLengthChange }, titleInput.value);
   if (!staffContainer.hidden) {
-    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick });
+    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
   }
 }
 
@@ -162,7 +192,7 @@ function handleStaffNoteClick(note: Note, displayAsFlat: boolean): void {
     const lastItem = currentItems[currentItems.length - 1];
     if (lastItem) {
       lastItem.flatDisplay = true;
-      renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick });
+      renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
     }
   }
   input.focus();
@@ -170,7 +200,7 @@ function handleStaffNoteClick(note: Note, displayAsFlat: boolean): void {
 
 function update(): void {
   const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
-  const { tokens } = parseNotes(input.value);
+  const { tokens } = parseNotes(input.value, keySignature);
   const previousOverrides = currentItems.map((item) => item.lengthOverride);
   const previousFlatDisplay = currentItems.map((item) => item.flatDisplay);
   currentItems = buildTabItems(tokens, ocarinaTypeId);
@@ -208,12 +238,20 @@ clearButton.addEventListener("click", () => {
   update();
   input.focus();
 });
+keySignatureToggle.addEventListener("click", () => {
+  const expanded = keySignatureToggle.getAttribute("aria-expanded") === "true";
+  keySignatureContainer.hidden = expanded;
+  keySignatureToggle.setAttribute("aria-expanded", String(!expanded));
+  if (!expanded) {
+    renderKeySignaturePicker(keySignatureContainer, keySignature, { onToggle: handleKeySignatureToggle });
+  }
+});
 staffToggle.addEventListener("click", () => {
   const expanded = staffToggle.getAttribute("aria-expanded") === "true";
   staffContainer.hidden = expanded;
   staffToggle.setAttribute("aria-expanded", String(!expanded));
   if (!expanded) {
-    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick });
+    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
   }
 });
 
@@ -411,6 +449,7 @@ saveButton.addEventListener("click", async () => {
     ocarinaType: ocarinaTypeId,
     notes: input.value,
     lengthOverrides: currentItems.map((item) => item.lengthOverride),
+    keySignature,
   });
   const filename = `${buildExportFilename(titleInput.value, ocarinaTypeId)}.txt`;
   downloadSaveFile(filename, content);
@@ -431,6 +470,8 @@ async function handleSaveFile(file: File): Promise<void> {
   titleInput.value = result.title;
   typeSelect.value = result.ocarinaType;
   localStorage.setItem(OCARINA_TYPE_STORAGE_KEY, typeSelect.value);
+  keySignature = result.keySignature;
+  renderKeySignatureUI();
   input.value = result.notes;
   update();
   result.lengthOverrides.forEach((override, index) => {
@@ -465,4 +506,5 @@ loadDropZone.addEventListener("drop", (event) => {
   }
 });
 
+renderKeySignatureUI();
 update();

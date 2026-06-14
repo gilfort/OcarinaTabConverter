@@ -82,3 +82,30 @@ describe("parseNotes", () => {
     ]);
   });
 });
+
+describe("parseNotes with a key signature", () => {
+  it("applies the key signature's accidental to a note with no explicit accidental", () => {
+    const result = parseNotes("F4", { F: "sharp" });
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "F", accidental: "sharp", octave: 4 });
+  });
+
+  it("leaves notes for other pitch classes unaffected", () => {
+    const result = parseNotes("G4", { F: "sharp" });
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "G", accidental: null, octave: 4 });
+  });
+
+  it("lets an explicit accidental override the key signature", () => {
+    const result = parseNotes("Fb4", { F: "sharp" });
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "F", accidental: "flat", octave: 4 });
+  });
+
+  it("lets an explicit natural ('n') cancel the key signature's accidental", () => {
+    const result = parseNotes("Fn4", { F: "sharp" });
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "F", accidental: null, octave: 4 });
+  });
+
+  it("is unaffected by a key signature when none is given", () => {
+    const result = parseNotes("F4");
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "F", accidental: null, octave: 4 });
+  });
+});

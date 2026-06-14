@@ -114,6 +114,61 @@ h1 {
   box-sizing: border-box;
 }
 
+#key-signature-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#key-signature-toggle {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+#key-signature-summary {
+  font-size: 1rem;
+}
+
+.key-signature-picker {
+  background-color: #f5efe0;
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.key-signature-picker__list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.key-signature-picker__note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 2.5rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #767676;
+  border-radius: 4px;
+}
+
+.key-signature-picker__accidental {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .key-signature-picker__note {
+    background: #2a2a2a;
+    color: #ddd;
+    border-color: #767676;
+  }
+}
+
 #note-input-row {
   display: flex;
   gap: 0.5rem;
@@ -186,17 +241,6 @@ h1 {
 }
 
 @media (prefers-color-scheme: dark) {
-  .staff-input__line,
-  .staff-input__ledger {
-    stroke: #ddd;
-  }
-
-  .staff-input__clef,
-  .staff-input__notehead,
-  .staff-input__accidental {
-    fill: #ddd;
-  }
-
   .staff-input__preview-glyph {
     fill: #8da0ff;
   }
