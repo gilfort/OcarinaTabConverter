@@ -112,7 +112,26 @@ function renderLegend(): HTMLElement {
     legend.appendChild(item);
   }
 
+  const eighthItem = document.createElement("div");
+  eighthItem.className = "tab-legend__item";
+
+  const eighthSymbol = document.createElement("span");
+  eighthSymbol.className = "tab-legend__symbol tab-legend__symbol--eighth";
+
+  const eighthLabel = document.createElement("span");
+  eighthLabel.textContent = "Line above note: eighth note (play faster)";
+
+  eighthItem.append(eighthSymbol, eighthLabel);
+  legend.appendChild(eighthItem);
+
   return legend;
+}
+
+/** Builds the line shown above an eighth-note/rest cell to indicate it's played faster. */
+function renderFastMarker(): HTMLElement {
+  const marker = document.createElement("span");
+  marker.className = "tab-cell__fast-marker";
+  return marker;
 }
 
 function renderItem(
@@ -127,6 +146,10 @@ function renderItem(
   if (item.token.rest) {
     const length = resolveNoteLength(item.lengthOverride, item.token.rest);
     cell.classList.add("tab-cell--rest", `tab-cell--${length}`);
+
+    if (length === "eighth") {
+      cell.appendChild(renderFastMarker());
+    }
 
     const visual = document.createElement("div");
     visual.className = "tab-cell__visual";
@@ -171,6 +194,10 @@ function renderItem(
   if (result.status === "found") {
     const length = resolveNoteLength(item.lengthOverride, defaultNoteLength);
     cell.classList.add(`tab-cell--${length}`);
+
+    if (length === "eighth") {
+      cell.appendChild(renderFastMarker());
+    }
 
     const visual = document.createElement("div");
     visual.className = "tab-cell__visual";

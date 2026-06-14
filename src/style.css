@@ -132,8 +132,11 @@ h1 {
   height: auto;
 }
 
-.tab-cell--eighth .tab-cell__image {
-  width: calc(var(--tab-unit-width) / 2);
+.tab-cell__fast-marker {
+  width: var(--tab-unit-width);
+  height: 4px;
+  background: currentColor;
+  margin-bottom: 0.25rem;
 }
 
 .tab-cell__rest {
@@ -148,10 +151,6 @@ h1 {
 .tab-cell__rest svg {
   width: 100%;
   height: 100%;
-}
-
-.tab-cell--eighth .tab-cell__rest {
-  width: calc(var(--tab-unit-width) / 2);
 }
 
 .tab-cell__dash {
@@ -240,6 +239,14 @@ h1 {
 
 .tab-legend__symbol--open {
   background-color: #fff;
+}
+
+.tab-legend__symbol--eighth {
+  width: 0.9rem;
+  height: 4px;
+  border: none;
+  border-radius: 0;
+  background-color: #000;
 }
 
 #export-row {
