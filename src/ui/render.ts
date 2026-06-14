@@ -10,6 +10,7 @@ import {
   type NoteLength,
   type NoteLengthOverride,
 } from "../notes/length";
+import { REST_GLYPHS } from "../notes/restGlyphs";
 
 export interface TabItem {
   token: ParsedToken;
@@ -122,6 +123,39 @@ function renderItem(
 ): HTMLElement {
   const cell = document.createElement("div");
   cell.className = "tab-cell";
+
+  if (item.token.rest) {
+    const length = resolveNoteLength(item.lengthOverride, item.token.rest);
+    cell.classList.add("tab-cell--rest", `tab-cell--${length}`);
+
+    const visual = document.createElement("div");
+    visual.className = "tab-cell__visual";
+
+    const symbol = document.createElement("span");
+    symbol.className = "tab-cell__rest";
+    symbol.innerHTML = REST_GLYPHS[length];
+    visual.appendChild(symbol);
+
+    const dashCount = NOTE_LENGTH_UNITS[length] - 1;
+    for (let i = 0; i < dashCount; i++) {
+      const dash = document.createElement("span");
+      dash.className = "tab-cell__dash";
+      visual.appendChild(dash);
+    }
+
+    cell.appendChild(visual);
+
+    const label = document.createElement("p");
+    label.className = "tab-cell__label";
+    label.textContent = `${NOTE_LENGTH_LABELS[length]} rest`;
+    cell.appendChild(label);
+
+    if (options.interactive) {
+      cell.appendChild(renderLengthSelect(item.lengthOverride, index, options.onLengthChange));
+    }
+
+    return cell;
+  }
 
   if (item.token.error || !item.result) {
     cell.classList.add("tab-cell--error");

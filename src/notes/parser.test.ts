@@ -50,4 +50,35 @@ describe("parseNotes", () => {
     const result = parseNotes("   ");
     expect(result.tokens).toHaveLength(0);
   });
+
+  it("parses rest tokens with explicit lengths", () => {
+    const result = parseNotes("R1 R2 R4 R8");
+    expect(result.tokens.map((t) => t.rest)).toEqual(["whole", "half", "quarter", "eighth"]);
+    expect(result.tokens.every((t) => t.note === null && t.error === null)).toBe(true);
+  });
+
+  it("parses a bare 'R' rest as the default note length", () => {
+    const result = parseNotes("R");
+    expect(result.tokens[0]).toMatchObject({ note: null, rest: "quarter", error: null });
+  });
+
+  it("is case-insensitive for rest tokens", () => {
+    const result = parseNotes("r4");
+    expect(result.tokens[0]).toMatchObject({ rest: "quarter", error: null });
+  });
+
+  it("reports an error for a rest with an unsupported length suffix", () => {
+    const result = parseNotes("R3");
+    expect(result.tokens[0].rest).toBeNull();
+    expect(result.tokens[0].error).toMatch(/not a valid rest/);
+  });
+
+  it("parses notes and rests together in sequence", () => {
+    const result = parseNotes("C4 R4 D4");
+    expect(result.tokens.map((t) => (t.rest ? `rest:${t.rest}` : t.note?.pitchClass))).toEqual([
+      "C",
+      "rest:quarter",
+      "D",
+    ]);
+  });
 });

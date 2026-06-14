@@ -22,6 +22,14 @@ export const NOTE_LENGTHS: readonly NoteLength[] = ["eighth", "quarter", "half",
 
 export const DEFAULT_NOTE_LENGTH: NoteLength = "quarter";
 
+/** Maps a rest-length suffix digit (e.g. the "4" in "R4") to a NoteLength. */
+export const REST_LENGTH_CODES: Record<string, NoteLength> = {
+  "1": "whole",
+  "2": "half",
+  "4": "quarter",
+  "8": "eighth",
+};
+
 /** Resolves an override to a concrete length, falling back to the global default. */
 export function resolveNoteLength(override: NoteLengthOverride, defaultLength: NoteLength): NoteLength {
   return override === "default" ? defaultLength : override;

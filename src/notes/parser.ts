@@ -1,6 +1,8 @@
 import type { Accidental, Note, ParseResult, ParsedToken, PitchClass } from "./types";
+import { DEFAULT_NOTE_LENGTH, REST_LENGTH_CODES, type NoteLength } from "./length";
 
 const NOTE_PATTERN = /^([A-Ga-g])([#b]?)(-?\d+)?$/;
+const REST_PATTERN = /^[Rr](\d+)?$/;
 
 const PITCH_CLASSES: readonly PitchClass[] = ["A", "B", "C", "D", "E", "F", "G"];
 
@@ -41,6 +43,28 @@ export function parseNoteToken(raw: string): { note: Note | null; error: string 
 }
 
 /**
+ * Parses a single rest token (e.g. "R", "R4", "R8") into a `NoteLength`.
+ * `match` must be the result of a successful `REST_PATTERN` exec.
+ * Returns an error message if the length suffix is not recognized.
+ */
+function parseRestToken(
+  raw: string,
+  match: RegExpExecArray
+): { rest: NoteLength | null; error: string | null } {
+  const [, lengthCode] = match;
+  if (lengthCode === undefined) {
+    return { rest: DEFAULT_NOTE_LENGTH, error: null };
+  }
+
+  const length = REST_LENGTH_CODES[lengthCode];
+  if (!length) {
+    return { rest: null, error: `"${raw}" is not a valid rest (expected R, R1, R2, R4, or R8)` };
+  }
+
+  return { rest: length, error: null };
+}
+
+/**
  * Parses a sequence of note names separated by whitespace and/or commas
  * (e.g. "C4, D4 E4") into an ordered list of tokens. Each token carries
  * either a parsed `Note` or an error message, preserving input order so
@@ -53,8 +77,14 @@ export function parseNotes(input: string): ParseResult {
     .filter((token) => token.length > 0);
 
   const tokens: ParsedToken[] = rawTokens.map((raw, index) => {
+    const restMatch = REST_PATTERN.exec(raw.trim());
+    if (restMatch) {
+      const { rest, error } = parseRestToken(raw, restMatch);
+      return { raw, index, note: null, rest, error };
+    }
+
     const { note, error } = parseNoteToken(raw);
-    return { raw, index, note, error };
+    return { raw, index, note, rest: null, error };
   });
 
   return { tokens };

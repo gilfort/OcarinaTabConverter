@@ -1,3 +1,5 @@
+import type { NoteLength } from "./length";
+
 export type PitchClass = "A" | "B" | "C" | "D" | "E" | "F" | "G";
 export type Accidental = "sharp" | "flat";
 
@@ -13,7 +15,9 @@ export interface ParsedToken {
   /** Index of this token within the parsed sequence. */
   index: number;
   note: Note | null;
-  /** Set when `note` is null, describing why the token could not be parsed. */
+  /** Set when this token is a rest (e.g. "R4"), giving its duration. */
+  rest: NoteLength | null;
+  /** Set when `note` and `rest` are null, describing why the token could not be parsed. */
   error: string | null;
 }
 

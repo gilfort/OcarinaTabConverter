@@ -45,7 +45,7 @@ app.innerHTML = `
     </select>
   </div>
   <div id="note-input-row">
-    <input id="note-input" type="text" placeholder="e.g. C4 D4 E4" autocomplete="off" />
+    <input id="note-input" type="text" placeholder="e.g. C4 D4 R4 E4" autocomplete="off" />
     <button id="clear-button" type="button">Clear</button>
   </div>
   <div id="tab-output" class="tab-output"></div>

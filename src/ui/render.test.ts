@@ -101,3 +101,78 @@ describe("renderTab note lengths", () => {
     expect(staticContainer.querySelector(".tab-cell__length")).toBeNull();
   });
 });
+
+describe("renderTab rests", () => {
+  function renderRest(input: string) {
+    const { tokens } = parseNotes(input);
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+    return container.querySelector(".tab-cell")!;
+  }
+
+  it("renders a rest with its glyph and length class instead of a fingering diagram", () => {
+    const cell = renderRest("R4");
+
+    expect(cell.classList.contains("tab-cell--rest")).toBe(true);
+    expect(cell.classList.contains("tab-cell--quarter")).toBe(true);
+    expect(cell.querySelector(".tab-cell__rest")).not.toBeNull();
+    expect(cell.querySelector(".tab-cell__image")).toBeNull();
+    expect(cell.querySelector(".tab-cell__length")).toBeNull();
+  });
+
+  it("renders a half rest with one dash extension", () => {
+    const cell = renderRest("R2");
+
+    expect(cell.classList.contains("tab-cell--half")).toBe(true);
+    expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(1);
+  });
+
+  it("renders a whole rest with three dash extensions", () => {
+    const cell = renderRest("R1");
+
+    expect(cell.classList.contains("tab-cell--whole")).toBe(true);
+    expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(3);
+  });
+
+  it("renders an eighth rest with the eighth-width class and no dashes", () => {
+    const cell = renderRest("R8");
+
+    expect(cell.classList.contains("tab-cell--eighth")).toBe(true);
+    expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(0);
+  });
+
+  it("labels the rest with its length", () => {
+    const cell = renderRest("R4");
+
+    expect(cell.querySelector(".tab-cell__label")?.textContent).toBe("Quarter rest");
+  });
+
+  it("shows a length select for rests when interactive, defaulting to the parsed length", () => {
+    const { tokens } = parseNotes("R4");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: true });
+    const cell = container.querySelector(".tab-cell")!;
+
+    const select = cell.querySelector<HTMLSelectElement>(".tab-cell__length");
+    expect(select).not.toBeNull();
+    expect(select!.value).toBe("default");
+  });
+
+  it("changes the rendered rest length when its length override is set", () => {
+    const { tokens } = parseNotes("R4");
+    const items = buildTabItems(tokens, "12hole");
+    items[0].lengthOverride = "whole";
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+    const cell = container.querySelector(".tab-cell")!;
+
+    expect(cell.classList.contains("tab-cell--whole")).toBe(true);
+    expect(cell.querySelector(".tab-cell__label")?.textContent).toBe("Whole rest");
+    expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(3);
+  });
+});
