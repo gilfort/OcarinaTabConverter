@@ -5,7 +5,7 @@ import type { OcarinaTypeId } from "./fingering/types";
 import type { ExportFormat } from "./export/exporter";
 import { shiftNoteIntoRange } from "./export/octaveShift";
 import { parseNotes } from "./notes/parser";
-import type { Note } from "./notes/types";
+import { formatNote } from "./notes/format";
 import {
   DEFAULT_NOTE_LENGTH,
   NOTE_LENGTHS,
@@ -14,6 +14,9 @@ import {
   type NoteLengthOverride,
 } from "./notes/length";
 import { buildTabItems, renderTab, type TabItem } from "./ui/render";
+import { isMidiParseError, parseMidiFile } from "./midi/parser";
+import { computeGlobalMinMidiPitch, convertTrackToTokens } from "./midi/convert";
+import type { MidiTrack } from "./midi/types";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
@@ -44,6 +47,13 @@ app.innerHTML = `
       ).join("")}
     </select>
   </div>
+  <div id="midi-import-row">
+    <label for="midi-file-input">Import MIDI</label>
+    <input id="midi-file-input" type="file" accept=".mid,.midi" />
+    <select id="midi-track-select" hidden></select>
+  </div>
+  <div id="midi-drop-zone" class="midi-drop-zone">Drop a .mid/.midi file here to import notes</div>
+  <p id="midi-error" class="midi-error" hidden></p>
   <div id="note-input-row">
     <input id="note-input" type="text" placeholder="e.g. C4 D4 R4 E4" autocomplete="off" />
     <button id="clear-button" type="button">Clear</button>
@@ -83,6 +93,10 @@ const exportWarningDialog = app.querySelector<HTMLDialogElement>("#export-warnin
 const exportShiftButton = app.querySelector<HTMLButtonElement>("#export-shift-button")!;
 const exportStripButton = app.querySelector<HTMLButtonElement>("#export-strip-button")!;
 const exportCancelButton = app.querySelector<HTMLButtonElement>("#export-cancel-button")!;
+const midiFileInput = app.querySelector<HTMLInputElement>("#midi-file-input")!;
+const midiDropZone = app.querySelector<HTMLDivElement>("#midi-drop-zone")!;
+const midiTrackSelect = app.querySelector<HTMLSelectElement>("#midi-track-select")!;
+const midiError = app.querySelector<HTMLParagraphElement>("#midi-error")!;
 
 const VALIDATION_DEBOUNCE_MS = 200;
 const OCARINA_TYPE_STORAGE_KEY = "ocarinaType";
@@ -146,12 +160,6 @@ clearButton.addEventListener("click", () => {
   update();
   input.focus();
 });
-
-/** Formats a note back to its text form, e.g. "A3" or "C#5", for display after an octave shift. */
-function formatNote(note: Note): string {
-  const accidental = note.accidental === "sharp" ? "#" : note.accidental === "flat" ? "b" : "";
-  return `${note.pitchClass}${accidental}${note.octave}`;
-}
 
 /** Asks the user how to handle out-of-range notes before exporting, via the warning dialog. */
 function askOutOfRangeChoice(): Promise<"shift" | "strip" | "cancel"> {
@@ -233,6 +241,96 @@ exportButton.addEventListener("click", async () => {
   } finally {
     exportCapture.innerHTML = "";
     exportButton.disabled = !currentItems.some((item) => item.result?.status === "found");
+  }
+});
+
+const globalMinMidiPitch = computeGlobalMinMidiPitch(supportedOcarinaTypes);
+let midiTicksPerQuarter = 0;
+let midiTracksWithNotes: MidiTrack[] = [];
+
+function showMidiError(message: string): void {
+  midiError.textContent = message;
+  midiError.hidden = false;
+}
+
+function clearMidiState(): void {
+  midiError.hidden = true;
+  midiTrackSelect.hidden = true;
+  midiTrackSelect.innerHTML = "";
+  midiTracksWithNotes = [];
+}
+
+/** Populates the note input from a MIDI track, applying per-note length overrides derived from its durations. */
+function importMidiTrack(track: MidiTrack): void {
+  const tokens = convertTrackToTokens(track, midiTicksPerQuarter, globalMinMidiPitch);
+  input.value = tokens.map((token) => token.raw).join(" ");
+  update();
+  tokens.forEach((token, index) => {
+    if (currentItems[index]) {
+      currentItems[index].lengthOverride = token.lengthOverride;
+    }
+  });
+  rerender();
+}
+
+async function handleMidiFile(file: File): Promise<void> {
+  clearMidiState();
+
+  const buffer = await file.arrayBuffer();
+  const result = parseMidiFile(buffer);
+  if (isMidiParseError(result)) {
+    showMidiError(result.error);
+    return;
+  }
+
+  midiTicksPerQuarter = result.ticksPerQuarter;
+  midiTracksWithNotes = result.tracks.filter((track) => track.events.length > 0);
+
+  if (midiTracksWithNotes.length === 0) {
+    showMidiError("No notes found in this MIDI file.");
+    return;
+  }
+
+  if (midiTracksWithNotes.length > 1) {
+    midiTracksWithNotes.forEach((track, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = track.name || `Track ${index + 1}`;
+      midiTrackSelect.appendChild(option);
+    });
+    midiTrackSelect.hidden = false;
+  }
+
+  importMidiTrack(midiTracksWithNotes[0]);
+}
+
+midiFileInput.addEventListener("change", () => {
+  const file = midiFileInput.files?.[0];
+  if (file) {
+    void handleMidiFile(file);
+  }
+});
+
+midiTrackSelect.addEventListener("change", () => {
+  const track = midiTracksWithNotes[Number(midiTrackSelect.value)];
+  if (track) {
+    importMidiTrack(track);
+  }
+});
+
+midiDropZone.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  midiDropZone.classList.add("midi-drop-zone--active");
+});
+midiDropZone.addEventListener("dragleave", () => {
+  midiDropZone.classList.remove("midi-drop-zone--active");
+});
+midiDropZone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  midiDropZone.classList.remove("midi-drop-zone--active");
+  const file = event.dataTransfer?.files?.[0];
+  if (file) {
+    void handleMidiFile(file);
   }
 });
 

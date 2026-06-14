@@ -50,6 +50,37 @@ h1 {
   padding: 0.35rem;
 }
 
+#midi-import-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#midi-track-select {
+  font-size: 1rem;
+  padding: 0.35rem;
+}
+
+.midi-drop-zone {
+  border: 2px dashed #aaa;
+  border-radius: 4px;
+  padding: calc(0.75rem + 5px) 0.75rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.midi-drop-zone--active {
+  border-color: #4d62e9;
+  color: #4d62e9;
+}
+
+.midi-error {
+  color: #c0392b;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
 #note-input-row {
   display: flex;
   gap: 0.5rem;
