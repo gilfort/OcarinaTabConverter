@@ -23,47 +23,63 @@ import type { MidiTrack } from "./midi/types";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
-  <h1>Ocarina Tab Converter</h1>
-  <div id="supported-types">
-    <span class="supported-types__label">Supported ocarinas:</span>
-    ${supportedOcarinaTypes
-      .map(
-        (type) =>
-          `<span class="supported-types__item">${type.displayName} (${formatNormalizedNote(
-            type.range.min
-          )}–${formatNormalizedNote(type.range.max)})</span>`
-      )
-      .join("")}
+  <div id="app-header">
+    <button id="menu-toggle" type="button" class="menu-toggle" aria-expanded="false" aria-controls="menu-drawer" aria-label="Open menu">☰</button>
+    <h1>Ocarina Tab Converter</h1>
+    <span id="menu-summary" class="menu-summary"></span>
   </div>
-  <label for="ocarina-type">Ocarina type</label>
-  <select id="ocarina-type">
-    ${supportedOcarinaTypes
-      .map((type) => `<option value="${type.id}">${type.displayName}</option>`)
-      .join("")}
-  </select>
-  <div id="settings-row">
-    <label for="default-note-length">Default note length</label>
-    <select id="default-note-length">
-      ${NOTE_LENGTHS.map(
-        (length) =>
-          `<option value="${length}"${length === DEFAULT_NOTE_LENGTH ? " selected" : ""}>${NOTE_LENGTH_LABELS[length]}</option>`
-      ).join("")}
+  <div id="menu-overlay" class="menu-overlay" hidden></div>
+  <aside id="menu-drawer" class="menu-drawer" hidden aria-label="Settings menu">
+    <button id="menu-close" type="button" class="menu-close" aria-label="Close menu">×</button>
+    <div id="supported-types">
+      <span class="supported-types__label">Supported ocarinas:</span>
+      ${supportedOcarinaTypes
+        .map(
+          (type) =>
+            `<span class="supported-types__item">${type.displayName} (${formatNormalizedNote(
+              type.range.min
+            )}–${formatNormalizedNote(type.range.max)})</span>`
+        )
+        .join("")}
+    </div>
+    <label for="ocarina-type">Ocarina type</label>
+    <select id="ocarina-type">
+      ${supportedOcarinaTypes
+        .map((type) => `<option value="${type.id}">${type.displayName}</option>`)
+        .join("")}
     </select>
-  </div>
-  <div id="midi-import-row">
-    <label for="midi-file-input">Import MIDI</label>
-    <input id="midi-file-input" type="file" accept=".mid,.midi" />
-    <select id="midi-track-select" hidden></select>
-  </div>
-  <div id="midi-drop-zone" class="midi-drop-zone">Drop a .mid/.midi file here to import notes</div>
-  <p id="midi-error" class="midi-error" hidden></p>
-  <div id="save-load-row">
-    <button id="save-button" type="button">Save</button>
-    <label for="load-file-input" id="load-button" class="button-label">Load</label>
-    <input id="load-file-input" type="file" accept=".txt" hidden />
-  </div>
-  <div id="load-drop-zone" class="midi-drop-zone">Drop a saved .txt file here to load</div>
-  <p id="load-error" class="midi-error" hidden></p>
+    <div id="settings-row">
+      <label for="default-note-length">Default note length</label>
+      <select id="default-note-length">
+        ${NOTE_LENGTHS.map(
+          (length) =>
+            `<option value="${length}"${length === DEFAULT_NOTE_LENGTH ? " selected" : ""}>${NOTE_LENGTH_LABELS[length]}</option>`
+        ).join("")}
+      </select>
+    </div>
+    <div id="midi-import-row">
+      <label for="midi-file-input">Import MIDI</label>
+      <input id="midi-file-input" type="file" accept=".mid,.midi" />
+      <select id="midi-track-select" hidden></select>
+    </div>
+    <div id="midi-drop-zone" class="midi-drop-zone">Drop a .mid/.midi file here to import notes</div>
+    <p id="midi-error" class="midi-error" hidden></p>
+    <div id="save-load-row">
+      <button id="save-button" type="button">Save</button>
+      <label for="load-file-input" id="load-button" class="button-label">Load</label>
+      <input id="load-file-input" type="file" accept=".txt" hidden />
+    </div>
+    <div id="load-drop-zone" class="midi-drop-zone">Drop a saved .txt file here to load</div>
+    <p id="load-error" class="midi-error" hidden></p>
+    <div id="export-row">
+      <label for="export-format">Export as</label>
+      <select id="export-format">
+        <option value="pdf">PDF</option>
+        <option value="png">Image (PNG)</option>
+      </select>
+      <button id="export-button" type="button" disabled>Export</button>
+    </div>
+  </aside>
   <div id="title-input-row">
     <label for="title-input">Title</label>
     <input id="title-input" type="text" placeholder="Untitled" autocomplete="off" />
@@ -80,14 +96,6 @@ app.innerHTML = `
   </div>
   <div id="staff-input-container" class="staff-input" hidden></div>
   <div id="tab-output" class="tab-output"></div>
-  <div id="export-row">
-    <label for="export-format">Export as</label>
-    <select id="export-format">
-      <option value="pdf">PDF</option>
-      <option value="png">Image (PNG)</option>
-    </select>
-    <button id="export-button" type="button" disabled>Export</button>
-  </div>
   <div id="export-capture" class="tab-output" aria-hidden="true"></div>
   <dialog id="export-warning-dialog">
     <p>
@@ -102,6 +110,11 @@ app.innerHTML = `
   </dialog>
 `;
 
+const menuToggle = app.querySelector<HTMLButtonElement>("#menu-toggle")!;
+const menuClose = app.querySelector<HTMLButtonElement>("#menu-close")!;
+const menuDrawer = app.querySelector<HTMLDivElement>("#menu-drawer")!;
+const menuOverlay = app.querySelector<HTMLDivElement>("#menu-overlay")!;
+const menuSummary = app.querySelector<HTMLSpanElement>("#menu-summary")!;
 const typeSelect = app.querySelector<HTMLSelectElement>("#ocarina-type")!;
 const defaultLengthSelect = app.querySelector<HTMLSelectElement>("#default-note-length")!;
 const titleInput = app.querySelector<HTMLInputElement>("#title-input")!;
@@ -145,6 +158,74 @@ if (storedDefaultNoteLength && (NOTE_LENGTHS as readonly string[]).includes(stor
 
 let currentItems: TabItem[] = [];
 let keySignature: KeySignature = {};
+
+/** Returns the visible, tabbable elements inside the drawer, for the focus trap. */
+function getDrawerFocusable(): HTMLElement[] {
+  return Array.from(
+    menuDrawer.querySelectorAll<HTMLElement>(
+      'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((element) => !element.hasAttribute("hidden"));
+}
+
+function onMenuKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape") {
+    closeMenu();
+    return;
+  }
+  if (event.key !== "Tab") {
+    return;
+  }
+  const focusable = getDrawerFocusable();
+  if (focusable.length === 0) {
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function openMenu(): void {
+  menuDrawer.hidden = false;
+  menuOverlay.hidden = false;
+  menuToggle.setAttribute("aria-expanded", "true");
+  document.addEventListener("keydown", onMenuKeydown);
+  getDrawerFocusable()[0]?.focus();
+}
+
+function closeMenu(): void {
+  if (menuDrawer.hidden) {
+    return;
+  }
+  menuDrawer.hidden = true;
+  menuOverlay.hidden = true;
+  menuToggle.setAttribute("aria-expanded", "false");
+  document.removeEventListener("keydown", onMenuKeydown);
+  menuToggle.focus();
+}
+
+/** Updates the header badge summarizing the current ocarina type and default note length. */
+function updateMenuSummary(): void {
+  const type = supportedOcarinaTypes.find((candidate) => candidate.id === typeSelect.value);
+  const lengthLabel = NOTE_LENGTH_LABELS[defaultLengthSelect.value as NoteLength];
+  menuSummary.textContent = type ? `${type.displayName}, ${lengthLabel}` : "";
+}
+
+menuToggle.addEventListener("click", () => {
+  if (menuDrawer.hidden) {
+    openMenu();
+  } else {
+    closeMenu();
+  }
+});
+menuClose.addEventListener("click", closeMenu);
+menuOverlay.addEventListener("click", closeMenu);
 
 /** Refreshes the key signature summary text and picker (if open). */
 function renderKeySignatureUI(): void {
@@ -224,10 +305,12 @@ input.addEventListener("input", () => {
 typeSelect.addEventListener("change", () => {
   localStorage.setItem(OCARINA_TYPE_STORAGE_KEY, typeSelect.value);
   update();
+  updateMenuSummary();
 });
 defaultLengthSelect.addEventListener("change", () => {
   localStorage.setItem(DEFAULT_NOTE_LENGTH_STORAGE_KEY, defaultLengthSelect.value);
   rerender();
+  updateMenuSummary();
 });
 titleInput.addEventListener("input", () => {
   rerender();
@@ -453,6 +536,7 @@ saveButton.addEventListener("click", async () => {
   });
   const filename = `${buildExportFilename(titleInput.value, ocarinaTypeId)}.txt`;
   downloadSaveFile(filename, content);
+  closeMenu();
 });
 
 /** Restores a saved piece's title, ocarina type, notes, and per-note length overrides into the app. */
@@ -480,6 +564,8 @@ async function handleSaveFile(file: File): Promise<void> {
     }
   });
   rerender();
+  updateMenuSummary();
+  closeMenu();
 }
 
 loadFileInput.addEventListener("change", () => {
@@ -507,4 +593,5 @@ loadDropZone.addEventListener("drop", (event) => {
 });
 
 renderKeySignatureUI();
+updateMenuSummary();
 update();
