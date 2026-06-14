@@ -17,6 +17,8 @@ export interface TabItem {
   result: FingeringResult | null;
   /** "default" inherits the globally selected default note length. */
   lengthOverride: NoteLengthOverride;
+  /** When true, the staff input displays this note's sharp as a flat on the position above. */
+  flatDisplay?: boolean;
 }
 
 export interface RenderTabOptions {

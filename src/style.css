@@ -126,11 +126,80 @@ h1 {
   box-sizing: border-box;
 }
 
-#clear-button {
+#clear-button,
+#staff-toggle {
   font-size: 1rem;
   padding: 0.5rem 1rem;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.staff-input {
+  background-color: #f5efe0;
+  border-radius: 4px;
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+.staff-input__svg {
+  height: 118px;
+  display: block;
+}
+
+.staff-input__line,
+.staff-input__ledger {
+  stroke: #333;
+  stroke-width: 1;
+}
+
+.staff-input__ledger {
+  stroke: #999;
+  stroke-dasharray: 2 2;
+}
+
+.staff-input__clef {
+  font-size: 34px;
+  fill: #333;
+}
+
+.staff-input__notehead {
+  fill: #333;
+}
+
+.staff-input__accidental {
+  font-size: 13px;
+  fill: #333;
+}
+
+.staff-input__overlay {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.staff-input__preview {
+  pointer-events: none;
+}
+
+.staff-input__preview-glyph {
+  fill: #4d62e9;
+  opacity: 0.6;
+}
+
+@media (prefers-color-scheme: dark) {
+  .staff-input__line,
+  .staff-input__ledger {
+    stroke: #ddd;
+  }
+
+  .staff-input__clef,
+  .staff-input__notehead,
+  .staff-input__accidental {
+    fill: #ddd;
+  }
+
+  .staff-input__preview-glyph {
+    fill: #8da0ff;
+  }
 }
 
 .tab-output {

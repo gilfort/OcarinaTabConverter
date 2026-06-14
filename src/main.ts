@@ -14,6 +14,8 @@ import {
   type NoteLengthOverride,
 } from "./notes/length";
 import { buildTabItems, renderTab, type TabItem } from "./ui/render";
+import { renderStaff } from "./ui/staff";
+import type { Note } from "./notes/types";
 import { isMidiParseError, parseMidiFile } from "./midi/parser";
 import { computeGlobalMinMidiPitch, convertTrackToTokens } from "./midi/convert";
 import type { MidiTrack } from "./midi/types";
@@ -68,7 +70,9 @@ app.innerHTML = `
   <div id="note-input-row">
     <input id="note-input" type="text" placeholder="e.g. C4 D4 R4 E4" autocomplete="off" />
     <button id="clear-button" type="button">Clear</button>
+    <button id="staff-toggle" type="button" aria-expanded="false">Staff input</button>
   </div>
+  <div id="staff-input-container" class="staff-input" hidden></div>
   <div id="tab-output" class="tab-output"></div>
   <div id="export-row">
     <label for="export-format">Export as</label>
@@ -98,6 +102,8 @@ const titleInput = app.querySelector<HTMLInputElement>("#title-input")!;
 const input = app.querySelector<HTMLInputElement>("#note-input")!;
 const output = app.querySelector<HTMLDivElement>("#tab-output")!;
 const clearButton = app.querySelector<HTMLButtonElement>("#clear-button")!;
+const staffToggle = app.querySelector<HTMLButtonElement>("#staff-toggle")!;
+const staffContainer = app.querySelector<HTMLDivElement>("#staff-input-container")!;
 const exportFormatSelect = app.querySelector<HTMLSelectElement>("#export-format")!;
 const exportButton = app.querySelector<HTMLButtonElement>("#export-button")!;
 const exportCapture = app.querySelector<HTMLDivElement>("#export-capture")!;
@@ -141,16 +147,39 @@ function onLengthChange(index: number, value: NoteLengthOverride): void {
 
 function rerender(): void {
   renderTab(output, currentItems, defaultNoteLength(), { interactive: true, onLengthChange }, titleInput.value);
+  if (!staffContainer.hidden) {
+    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick });
+  }
+}
+
+/** Appends a note picked on the clickable staff to the text input and re-parses. */
+function handleStaffNoteClick(note: Note, displayAsFlat: boolean): void {
+  const text = formatNote(note);
+  const trimmed = input.value.trim();
+  input.value = trimmed.length > 0 ? `${trimmed} ${text}` : text;
+  update();
+  if (displayAsFlat) {
+    const lastItem = currentItems[currentItems.length - 1];
+    if (lastItem) {
+      lastItem.flatDisplay = true;
+      renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick });
+    }
+  }
+  input.focus();
 }
 
 function update(): void {
   const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
   const { tokens } = parseNotes(input.value);
   const previousOverrides = currentItems.map((item) => item.lengthOverride);
+  const previousFlatDisplay = currentItems.map((item) => item.flatDisplay);
   currentItems = buildTabItems(tokens, ocarinaTypeId);
   currentItems.forEach((item, index) => {
     if (previousOverrides[index] !== undefined) {
       item.lengthOverride = previousOverrides[index];
+    }
+    if (previousFlatDisplay[index]) {
+      item.flatDisplay = true;
     }
   });
   rerender();
@@ -178,6 +207,14 @@ clearButton.addEventListener("click", () => {
   input.value = "";
   update();
   input.focus();
+});
+staffToggle.addEventListener("click", () => {
+  const expanded = staffToggle.getAttribute("aria-expanded") === "true";
+  staffContainer.hidden = expanded;
+  staffToggle.setAttribute("aria-expanded", String(!expanded));
+  if (!expanded) {
+    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick });
+  }
 });
 
 /** Asks the user how to handle out-of-range notes before exporting, via the warning dialog. */
