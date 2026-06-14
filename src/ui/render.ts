@@ -39,9 +39,17 @@ export function renderTab(
   container: HTMLElement,
   items: TabItem[],
   defaultNoteLength: NoteLength,
-  options: RenderTabOptions
+  options: RenderTabOptions,
+  title?: string
 ): void {
   container.innerHTML = "";
+
+  if (title?.trim()) {
+    const heading = document.createElement("h2");
+    heading.className = "tab-output__title";
+    heading.textContent = title.trim();
+    container.appendChild(heading);
+  }
 
   if (items.length === 0) {
     const placeholder = document.createElement("p");

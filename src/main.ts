@@ -54,6 +54,10 @@ app.innerHTML = `
   </div>
   <div id="midi-drop-zone" class="midi-drop-zone">Drop a .mid/.midi file here to import notes</div>
   <p id="midi-error" class="midi-error" hidden></p>
+  <div id="title-input-row">
+    <label for="title-input">Title</label>
+    <input id="title-input" type="text" placeholder="Untitled" autocomplete="off" />
+  </div>
   <div id="note-input-row">
     <input id="note-input" type="text" placeholder="e.g. C4 D4 R4 E4" autocomplete="off" />
     <button id="clear-button" type="button">Clear</button>
@@ -83,6 +87,7 @@ app.innerHTML = `
 
 const typeSelect = app.querySelector<HTMLSelectElement>("#ocarina-type")!;
 const defaultLengthSelect = app.querySelector<HTMLSelectElement>("#default-note-length")!;
+const titleInput = app.querySelector<HTMLInputElement>("#title-input")!;
 const input = app.querySelector<HTMLInputElement>("#note-input")!;
 const output = app.querySelector<HTMLDivElement>("#tab-output")!;
 const clearButton = app.querySelector<HTMLButtonElement>("#clear-button")!;
@@ -124,7 +129,7 @@ function onLengthChange(index: number, value: NoteLengthOverride): void {
 }
 
 function rerender(): void {
-  renderTab(output, currentItems, defaultNoteLength(), { interactive: true, onLengthChange });
+  renderTab(output, currentItems, defaultNoteLength(), { interactive: true, onLengthChange }, titleInput.value);
 }
 
 function update(): void {
@@ -152,6 +157,9 @@ typeSelect.addEventListener("change", () => {
 });
 defaultLengthSelect.addEventListener("change", () => {
   localStorage.setItem(DEFAULT_NOTE_LENGTH_STORAGE_KEY, defaultLengthSelect.value);
+  rerender();
+});
+titleInput.addEventListener("input", () => {
   rerender();
 });
 clearButton.addEventListener("click", () => {
@@ -235,9 +243,11 @@ exportButton.addEventListener("click", async () => {
   exportButton.disabled = true;
   try {
     const { exportElement } = await import("./export/exporter");
+    const { buildExportFilename } = await import("./export/filename");
     exportCapture.style.width = `${output.offsetWidth}px`;
-    renderTab(exportCapture, exportItems, defaultNoteLength(), { interactive: false });
-    await exportElement(exportCapture, exportFormatSelect.value as ExportFormat, "ocarina-tab");
+    renderTab(exportCapture, exportItems, defaultNoteLength(), { interactive: false }, titleInput.value);
+    const filename = buildExportFilename(titleInput.value, ocarinaTypeId);
+    await exportElement(exportCapture, exportFormatSelect.value as ExportFormat, filename);
   } finally {
     exportCapture.innerHTML = "";
     exportButton.disabled = !currentItems.some((item) => item.result?.status === "found");
