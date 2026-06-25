@@ -447,6 +447,20 @@ h1 {
   margin-top: 0.25rem;
 }
 
+.tab-cell--marker {
+  justify-content: center;
+  min-height: var(--tab-unit-width);
+  background-color: #ddccaa;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.tab-cell__marker-symbol {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #4d3b1f;
+}
+
 .tab-cell--error,
 .tab-cell--unsupported,
 .tab-cell--out-of-range {

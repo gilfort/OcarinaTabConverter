@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseNotes } from "../notes/parser";
+import { expandRepeats } from "../notes/repeats";
 import { buildTabItems, renderTab } from "./render";
 
 describe("buildTabItems", () => {
@@ -225,5 +226,41 @@ describe("renderTab line breaks", () => {
 
     expect(item.token.lineBreak).toBe(true);
     expect(item.result).toBeNull();
+  });
+});
+
+describe("renderTab repeat/volta markers", () => {
+  it("renders a repeat-start marker as a marker cell with the right caption", () => {
+    const { tokens } = parseNotes("|: C4 :|");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+
+    const markerCell = container.querySelector(".tab-cell--marker")!;
+    expect(markerCell).not.toBeNull();
+    expect(markerCell.querySelector(".tab-cell__marker-symbol")?.textContent).toBe("|:");
+    expect(markerCell.querySelector(".tab-cell__label")?.textContent).toBe("Repeat start");
+  });
+
+  it("excludes marker cells from the found-note legend logic", () => {
+    const { tokens } = parseNotes("|: :|");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+
+    expect(container.querySelector(".tab-legend")).toBeNull();
+  });
+
+  it("renders an unmatched marker as an error cell, not a marker cell", () => {
+    const { tokens } = parseNotes("|: C4");
+    const items = buildTabItems(expandRepeats(tokens), "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+
+    expect(container.querySelector(".tab-cell--marker")).toBeNull();
+    expect(container.querySelector(".tab-cell--error")).not.toBeNull();
   });
 });

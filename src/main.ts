@@ -5,6 +5,7 @@ import type { OcarinaTypeId } from "./fingering/types";
 import type { ExportFormat } from "./export/exporter";
 import { shiftNoteIntoRange } from "./export/octaveShift";
 import { parseNotes } from "./notes/parser";
+import { expandRepeats } from "./notes/repeats";
 import { formatNote } from "./notes/format";
 import {
   DEFAULT_NOTE_LENGTH,
@@ -346,9 +347,10 @@ function update(): void {
   stopPlayback();
   const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
   const { tokens } = parseNotes(input.value, keySignature);
+  const expandedTokens = expandRepeats(tokens);
   const previousOverrides = currentItems.map((item) => item.lengthOverride);
   const previousFlatDisplay = currentItems.map((item) => item.flatDisplay);
-  currentItems = buildTabItems(tokens, ocarinaTypeId);
+  currentItems = buildTabItems(expandedTokens, ocarinaTypeId);
   currentItems.forEach((item, index) => {
     if (previousOverrides[index] !== undefined) {
       item.lengthOverride = previousOverrides[index];

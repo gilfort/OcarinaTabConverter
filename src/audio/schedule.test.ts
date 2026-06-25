@@ -68,6 +68,16 @@ describe("buildPlaybackSchedule", () => {
     expect(events[1].startTime).toBe(0.5);
   });
 
+  it("skips valid repeat/volta markers entirely, taking no time", () => {
+    const events = schedule("C4 |: D4 :| F4");
+
+    expect(events.map((e) => e.frequency).every((f) => f !== null)).toBe(true);
+    expect(events).toHaveLength(3);
+    expect(events[0].startTime).toBe(0);
+    expect(events[1].startTime).toBe(0.5);
+    expect(events[2].startTime).toBe(1);
+  });
+
   it("respects a per-note length override over the default", () => {
     const { tokens } = parseNotes("C4");
     const items = buildTabItems(tokens, "12hole");

@@ -12,6 +12,9 @@ export interface Note {
   octave: number;
 }
 
+/** A repeat-barline or alternate-ending ("volta") marker token, e.g. "|:" or "[1". */
+export type RepeatMarker = "repeatStart" | "repeatEnd" | "voltaOne" | "voltaTwo";
+
 export interface ParsedToken {
   /** The raw text of this token as entered by the user. */
   raw: string;
@@ -24,6 +27,8 @@ export interface ParsedToken {
   error: string | null;
   /** Set when this token is a manual line break ("|"), forcing the next item onto a new row. */
   lineBreak: boolean;
+  /** Set when this token is a repeat barline or volta marker ("|:", ":|", "[1", "[2"). */
+  marker: RepeatMarker | null;
 }
 
 export interface ParseResult {

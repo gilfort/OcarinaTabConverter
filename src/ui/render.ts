@@ -66,6 +66,10 @@ export function renderTab(
       container.appendChild(renderLineBreak());
       return;
     }
+    if (item.token.marker && !item.token.error) {
+      container.appendChild(renderMarkerCell(item));
+      return;
+    }
     container.appendChild(renderItem(item, index, defaultNoteLength, options));
   });
 
@@ -79,6 +83,31 @@ function renderLineBreak(): HTMLElement {
   const lineBreak = document.createElement("div");
   lineBreak.className = "tab-output__line-break";
   return lineBreak;
+}
+
+const MARKER_CAPTIONS: Record<NonNullable<ParsedToken["marker"]>, string> = {
+  repeatStart: "Repeat start",
+  repeatEnd: "Repeat end",
+  voltaOne: "1st ending",
+  voltaTwo: "2nd ending",
+};
+
+/** Renders a repeat barline or volta marker as a compact, non-diagram cell. */
+function renderMarkerCell(item: TabItem): HTMLElement {
+  const cell = document.createElement("div");
+  cell.className = "tab-cell tab-cell--marker";
+
+  const symbol = document.createElement("span");
+  symbol.className = "tab-cell__marker-symbol";
+  symbol.textContent = item.token.raw;
+  cell.appendChild(symbol);
+
+  const caption = document.createElement("p");
+  caption.className = "tab-cell__label";
+  caption.textContent = MARKER_CAPTIONS[item.token.marker!];
+  cell.appendChild(caption);
+
+  return cell;
 }
 
 /** Builds the per-note length override selector shown below each found note. */

@@ -28,10 +28,11 @@ export function noteToFrequency(note: Note): number {
 
 /**
  * Builds a timed sequence of tones/silences from a tab's items, at a fixed tempo.
- * Line breaks take no time. Rests are silence for their resolved length. Notes that
- * resolved to a fingering ("found") sound at their pitch; everything else unplayable
- * (parse errors, out-of-range, unsupported) is silence at the default note length,
- * matching how those tokens have no per-note length selector.
+ * Line breaks and valid repeat/volta markers take no time. Rests are silence for their
+ * resolved length. Notes that resolved to a fingering ("found") sound at their pitch;
+ * everything else unplayable (parse errors, out-of-range, unsupported, malformed markers)
+ * is silence at the default note length, matching how those tokens have no per-note length
+ * selector.
  */
 export function buildPlaybackSchedule(
   items: readonly TabItem[],
@@ -43,7 +44,7 @@ export function buildPlaybackSchedule(
   let time = 0;
 
   for (const item of items) {
-    if (item.token.lineBreak) {
+    if (item.token.lineBreak || (item.token.marker && !item.token.error)) {
       continue;
     }
 

@@ -1,9 +1,16 @@
-import type { Accidental, KeySignature, Note, ParseResult, ParsedToken, PitchClass } from "./types";
+import type { Accidental, KeySignature, Note, ParseResult, ParsedToken, PitchClass, RepeatMarker } from "./types";
 import { DEFAULT_NOTE_LENGTH, REST_LENGTH_CODES, type NoteLength } from "./length";
 
 const NOTE_PATTERN = /^([A-Ga-g])([#bnN]?)(-?\d+)?$/;
 const REST_PATTERN = /^[Rr](\d+)?$/;
 const LINE_BREAK_TOKEN = "|";
+
+const MARKER_TOKENS: Readonly<Record<string, RepeatMarker>> = {
+  "|:": "repeatStart",
+  ":|": "repeatEnd",
+  "[1": "voltaOne",
+  "[2": "voltaTwo",
+};
 
 const PITCH_CLASSES: readonly PitchClass[] = ["A", "B", "C", "D", "E", "F", "G"];
 
@@ -95,17 +102,22 @@ export function parseNotes(input: string, keySignature?: KeySignature): ParseRes
 
   const tokens: ParsedToken[] = rawTokens.map((raw, index) => {
     if (raw.trim() === LINE_BREAK_TOKEN) {
-      return { raw, index, note: null, rest: null, error: null, lineBreak: true };
+      return { raw, index, note: null, rest: null, error: null, lineBreak: true, marker: null };
+    }
+
+    const marker = MARKER_TOKENS[raw.trim()];
+    if (marker) {
+      return { raw, index, note: null, rest: null, error: null, lineBreak: false, marker };
     }
 
     const restMatch = REST_PATTERN.exec(raw.trim());
     if (restMatch) {
       const { rest, error } = parseRestToken(raw, restMatch);
-      return { raw, index, note: null, rest, error, lineBreak: false };
+      return { raw, index, note: null, rest, error, lineBreak: false, marker: null };
     }
 
     const { note, error } = parseNoteToken(raw, keySignature);
-    return { raw, index, note, rest: null, error, lineBreak: false };
+    return { raw, index, note, rest: null, error, lineBreak: false, marker: null };
   });
 
   return { tokens };
