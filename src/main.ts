@@ -20,6 +20,8 @@ import type { Accidental, KeySignature, Note, PitchClass } from "./notes/types";
 import { isMidiParseError, parseMidiFile } from "./midi/parser";
 import { computeGlobalMinMidiPitch, convertTrackToTokens } from "./midi/convert";
 import type { MidiTrack } from "./midi/types";
+import { buildPlaybackSchedule } from "./audio/schedule";
+import { PlaybackController } from "./audio/player";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
@@ -56,6 +58,11 @@ app.innerHTML = `
             `<option value="${length}"${length === DEFAULT_NOTE_LENGTH ? " selected" : ""}>${NOTE_LENGTH_LABELS[length]}</option>`
         ).join("")}
       </select>
+    </div>
+    <div id="playback-row">
+      <button id="play-button" type="button" disabled>▶ Play</button>
+      <button id="pause-button" type="button" disabled>⏸ Pause</button>
+      <button id="stop-button" type="button" disabled>⏹ Stop</button>
     </div>
     <div id="midi-import-row">
       <label for="midi-file-input">Import MIDI</label>
@@ -122,6 +129,9 @@ const menuOverlay = app.querySelector<HTMLDivElement>("#menu-overlay")!;
 const menuSummary = app.querySelector<HTMLSpanElement>("#menu-summary")!;
 const typeSelect = app.querySelector<HTMLSelectElement>("#ocarina-type")!;
 const defaultLengthSelect = app.querySelector<HTMLSelectElement>("#default-note-length")!;
+const playButton = app.querySelector<HTMLButtonElement>("#play-button")!;
+const pauseButton = app.querySelector<HTMLButtonElement>("#pause-button")!;
+const stopButton = app.querySelector<HTMLButtonElement>("#stop-button")!;
 const titleInput = app.querySelector<HTMLInputElement>("#title-input")!;
 const keySignatureToggle = app.querySelector<HTMLButtonElement>("#key-signature-toggle")!;
 const keySignatureContainer = app.querySelector<HTMLDivElement>("#key-signature-container")!;
@@ -165,6 +175,7 @@ if (storedDefaultNoteLength && (NOTE_LENGTHS as readonly string[]).includes(stor
 
 let currentItems: TabItem[] = [];
 let keySignature: KeySignature = {};
+const playbackController = new PlaybackController();
 
 /** Returns the visible, tabbable elements inside the drawer, for the focus trap. */
 function getDrawerFocusable(): HTMLElement[] {
@@ -258,6 +269,35 @@ function defaultNoteLength(): NoteLength {
   return defaultLengthSelect.value as NoteLength;
 }
 
+/** Reflects the playback controller's current state on the Play/Pause/Stop buttons. */
+function updatePlaybackButtons(): void {
+  const hasPlayableContent = currentItems.some((item) => item.token.rest || item.result?.status === "found");
+  const state = playbackController.state;
+  playButton.disabled = state === "playing" || (state === "stopped" && !hasPlayableContent);
+  pauseButton.disabled = state !== "playing";
+  stopButton.disabled = state === "stopped";
+}
+
+function stopPlayback(): void {
+  playbackController.stop();
+  updatePlaybackButtons();
+}
+
+playButton.addEventListener("click", () => {
+  if (playbackController.state === "paused") {
+    playbackController.resume();
+  } else {
+    const schedule = buildPlaybackSchedule(currentItems, defaultNoteLength());
+    playbackController.play(schedule, updatePlaybackButtons);
+  }
+  updatePlaybackButtons();
+});
+pauseButton.addEventListener("click", () => {
+  playbackController.pause();
+  updatePlaybackButtons();
+});
+stopButton.addEventListener("click", stopPlayback);
+
 function onLengthChange(index: number, value: NoteLengthOverride): void {
   currentItems[index].lengthOverride = value;
   rerender();
@@ -303,6 +343,7 @@ function insertLineBreakAtCursor(): void {
 }
 
 function update(): void {
+  stopPlayback();
   const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
   const { tokens } = parseNotes(input.value, keySignature);
   const previousOverrides = currentItems.map((item) => item.lengthOverride);
@@ -318,6 +359,7 @@ function update(): void {
   });
   rerender();
   exportButton.disabled = !currentItems.some((item) => item.result?.status === "found");
+  updatePlaybackButtons();
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;

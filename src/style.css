@@ -130,6 +130,27 @@ h1 {
   padding: 0.35rem;
 }
 
+#playback-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 5px;
+}
+
+#play-button,
+#pause-button,
+#stop-button {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+#play-button:disabled,
+#pause-button:disabled,
+#stop-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 #midi-import-row {
   display: flex;
   align-items: center;
