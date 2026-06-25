@@ -94,11 +94,16 @@ function parseRestToken(
  * `keySignature`, if given, supplies the default accidental for notes
  * entered without an explicit "#"/"b"/"n".
  */
-export function parseNotes(input: string, keySignature?: KeySignature): ParseResult {
-  const rawTokens = input
+/** Splits raw input text into whitespace/comma-separated token strings, in order. */
+export function splitRawTokens(input: string): string[] {
+  return input
     .split(/[\s,]+/)
     .map((token) => token.trim())
     .filter((token) => token.length > 0);
+}
+
+export function parseNotes(input: string, keySignature?: KeySignature): ParseResult {
+  const rawTokens = splitRawTokens(input);
 
   const tokens: ParsedToken[] = rawTokens.map((raw, index) => {
     if (raw.trim() === LINE_BREAK_TOKEN) {

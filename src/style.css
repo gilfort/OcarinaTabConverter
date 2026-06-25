@@ -301,10 +301,32 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
-#staff-new-line-button {
+#staff-new-line-button,
+#staff-keys-toggle {
   font-size: 0.9rem;
   padding: 0.35rem 0.75rem;
   cursor: pointer;
+}
+
+#staff-svg-container:focus-visible {
+  outline: 2px solid #4d62e9;
+  outline-offset: 2px;
+}
+
+.staff-input__cursor {
+  stroke: #4d62e9;
+  stroke-width: 2;
+}
+
+#staff-keyboard-legend {
+  font-family: monospace;
+  font-size: 0.85rem;
+  background-color: #fffaf0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  white-space: pre;
 }
 
 .staff-input__svg {

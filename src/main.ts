@@ -4,9 +4,19 @@ import { lookupFingering, supportedOcarinaTypes } from "./fingering/lookup";
 import type { OcarinaTypeId } from "./fingering/types";
 import type { ExportFormat } from "./export/exporter";
 import { shiftNoteIntoRange } from "./export/octaveShift";
-import { parseNotes } from "./notes/parser";
+import { parseNotes, splitRawTokens } from "./notes/parser";
 import { expandRepeats } from "./notes/repeats";
 import { formatNote } from "./notes/format";
+import {
+  DEFAULT_OCTAVE,
+  LENGTH_KEYS,
+  OCTAVE_DOWN_KEYS,
+  OCTAVE_UP_KEYS,
+  WHITE_KEYS,
+  BLACK_KEYS,
+  clampOctave,
+  resolveKeyNote,
+} from "./ui/staffKeyboard";
 import {
   DEFAULT_NOTE_LENGTH,
   NOTE_LENGTHS,
@@ -105,8 +115,10 @@ app.innerHTML = `
   <div id="staff-input-container" class="staff-input" hidden>
     <div id="staff-toolbar">
       <button id="staff-new-line-button" type="button">New line</button>
+      <button id="staff-keys-toggle" type="button" aria-expanded="false">⌨ Keys</button>
     </div>
-    <div id="staff-svg-container"></div>
+    <div id="staff-keyboard-legend" hidden></div>
+    <div id="staff-svg-container" tabindex="0"></div>
   </div>
   <div id="tab-output" class="tab-output"></div>
   <div id="export-capture" class="tab-output" aria-hidden="true"></div>
@@ -144,6 +156,8 @@ const staffToggle = app.querySelector<HTMLButtonElement>("#staff-toggle")!;
 const staffContainer = app.querySelector<HTMLDivElement>("#staff-input-container")!;
 const staffSvgContainer = app.querySelector<HTMLDivElement>("#staff-svg-container")!;
 const staffNewLineButton = app.querySelector<HTMLButtonElement>("#staff-new-line-button")!;
+const staffKeysToggle = app.querySelector<HTMLButtonElement>("#staff-keys-toggle")!;
+const staffKeyboardLegend = app.querySelector<HTMLDivElement>("#staff-keyboard-legend")!;
 const exportFormatSelect = app.querySelector<HTMLSelectElement>("#export-format")!;
 const exportButton = app.querySelector<HTMLButtonElement>("#export-button")!;
 const exportCapture = app.querySelector<HTMLDivElement>("#export-capture")!;
@@ -177,6 +191,10 @@ if (storedDefaultNoteLength && (NOTE_LENGTHS as readonly string[]).includes(stor
 let currentItems: TabItem[] = [];
 let keySignature: KeySignature = {};
 const playbackController = new PlaybackController();
+
+let staffCursorIndex = 0;
+let staffOctave: number = DEFAULT_OCTAVE;
+let pendingLength: NoteLengthOverride = "default";
 
 /** Returns the visible, tabbable elements inside the drawer, for the focus trap. */
 function getDrawerFocusable(): HTMLElement[] {
@@ -312,7 +330,12 @@ function onLengthChange(index: number, value: NoteLengthOverride): void {
 function rerender(): void {
   renderTab(output, currentItems, defaultNoteLength(), { interactive: true, onLengthChange }, titleInput.value);
   if (!staffContainer.hidden) {
-    renderStaff(staffSvgContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
+    renderStaff(
+      staffSvgContainer,
+      currentItems,
+      { onNoteClick: handleStaffNoteClick, cursorIndex: staffCursorIndex },
+      keySignature
+    );
   }
 }
 
@@ -326,10 +349,112 @@ function handleStaffNoteClick(note: Note, displayAsFlat: boolean): void {
     const lastItem = currentItems[currentItems.length - 1];
     if (lastItem) {
       lastItem.flatDisplay = true;
-      renderStaff(staffSvgContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
+      renderStaff(
+        staffSvgContainer,
+        currentItems,
+        { onNoteClick: handleStaffNoteClick, cursorIndex: staffCursorIndex },
+        keySignature
+      );
     }
   }
   input.focus();
+}
+
+/** Updates the keyboard legend's text to reflect the current mapping, octave, and pending length. */
+function renderStaffKeyboardLegend(): void {
+  staffKeyboardLegend.innerHTML = `
+    <div>black (sharp): ${BLACK_KEYS.join("  ")}</div>
+    <div>white (nat.) : ${WHITE_KEYS.join("  ")}</div>
+    <div>Octave: ${staffOctave} (PageUp/PageDown to shift)</div>
+    <div>Length: ${lengthLabelFor(pendingLength)} (keys 1-5)</div>
+  `;
+}
+
+function lengthLabelFor(value: NoteLengthOverride): string {
+  if (value === "default") return "Default";
+  return NOTE_LENGTH_LABELS[value];
+}
+
+/** Removes the raw token at `tokenIndex`, rejoins, and re-parses. */
+function removeTokenAt(tokenIndex: number): void {
+  const rawTokens = splitRawTokens(input.value);
+  rawTokens.splice(tokenIndex, 1);
+  input.value = rawTokens.join(" ");
+  update();
+}
+
+/** Inserts `raw` as a new token at `tokenIndex`, rejoins, and re-parses. Returns the inserted item's index. */
+function insertTokenAt(tokenIndex: number, raw: string): void {
+  const rawTokens = splitRawTokens(input.value);
+  rawTokens.splice(tokenIndex, 0, raw);
+  input.value = rawTokens.join(" ");
+  update();
+}
+
+/** Handles keyboard input while the staff SVG container is focused: note keys, length/octave keys, cursor movement. */
+function handleStaffKeydown(event: KeyboardEvent): void {
+  if (event.key === "ArrowLeft") {
+    staffCursorIndex = Math.max(0, staffCursorIndex - 1);
+    rerender();
+    event.preventDefault();
+    return;
+  }
+  if (event.key === "ArrowRight") {
+    staffCursorIndex = Math.min(currentItems.length, staffCursorIndex + 1);
+    rerender();
+    event.preventDefault();
+    return;
+  }
+  if (event.key === "Backspace") {
+    if (staffCursorIndex > 0) {
+      removeTokenAt(staffCursorIndex - 1);
+      staffCursorIndex -= 1;
+      rerender();
+      staffSvgContainer.focus();
+    }
+    event.preventDefault();
+    return;
+  }
+  if (event.key === "Delete") {
+    if (staffCursorIndex < currentItems.length) {
+      removeTokenAt(staffCursorIndex);
+      rerender();
+      staffSvgContainer.focus();
+    }
+    event.preventDefault();
+    return;
+  }
+  if (OCTAVE_UP_KEYS.includes(event.key)) {
+    staffOctave = clampOctave(staffOctave + 1);
+    renderStaffKeyboardLegend();
+    event.preventDefault();
+    return;
+  }
+  if (OCTAVE_DOWN_KEYS.includes(event.key)) {
+    staffOctave = clampOctave(staffOctave - 1);
+    renderStaffKeyboardLegend();
+    event.preventDefault();
+    return;
+  }
+  if (event.key in LENGTH_KEYS) {
+    pendingLength = LENGTH_KEYS[event.key];
+    renderStaffKeyboardLegend();
+    event.preventDefault();
+    return;
+  }
+
+  const note = resolveKeyNote(event.key, staffOctave, { ctrlKey: event.ctrlKey, metaKey: event.metaKey });
+  if (note) {
+    const insertedIndex = staffCursorIndex;
+    insertTokenAt(insertedIndex, formatNote(note));
+    if (currentItems[insertedIndex] && pendingLength !== "default") {
+      currentItems[insertedIndex].lengthOverride = pendingLength;
+    }
+    staffCursorIndex = insertedIndex + 1;
+    rerender();
+    staffSvgContainer.focus();
+    event.preventDefault();
+  }
 }
 
 /** Inserts a "|" line-break token at the note input's cursor position, padding with spaces as needed. */
@@ -364,6 +489,7 @@ function update(): void {
       item.flatDisplay = true;
     }
   });
+  staffCursorIndex = Math.min(staffCursorIndex, currentItems.length);
   rerender();
   exportButton.disabled = !currentItems.some((item) => item.result?.status === "found");
   updatePlaybackButtons();
@@ -406,10 +532,25 @@ staffToggle.addEventListener("click", () => {
   staffContainer.hidden = expanded;
   staffToggle.setAttribute("aria-expanded", String(!expanded));
   if (!expanded) {
-    renderStaff(staffSvgContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
+    staffCursorIndex = currentItems.length;
+    renderStaff(
+      staffSvgContainer,
+      currentItems,
+      { onNoteClick: handleStaffNoteClick, cursorIndex: staffCursorIndex },
+      keySignature
+    );
   }
 });
 staffNewLineButton.addEventListener("click", insertLineBreakAtCursor);
+staffKeysToggle.addEventListener("click", () => {
+  const expanded = staffKeysToggle.getAttribute("aria-expanded") === "true";
+  staffKeyboardLegend.hidden = expanded;
+  staffKeysToggle.setAttribute("aria-expanded", String(!expanded));
+  if (!expanded) {
+    renderStaffKeyboardLegend();
+  }
+});
+staffSvgContainer.addEventListener("keydown", handleStaffKeydown);
 
 /** Asks the user how to handle out-of-range notes before exporting, via the warning dialog. */
 function askOutOfRangeChoice(): Promise<"shift" | "strip" | "cancel"> {

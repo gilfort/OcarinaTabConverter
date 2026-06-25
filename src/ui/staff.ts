@@ -60,6 +60,11 @@ export function noteToStep(note: Pick<Note, "pitchClass" | "octave">): number {
   return diatonicIndex(note) - E4_INDEX;
 }
 
+/** The diatonic step of a given octave's "C" (e.g. octave 4 -> step of C4), used by the staff keyboard. */
+export function octaveBaseStep(octave: number): number {
+  return diatonicIndex({ pitchClass: "C", octave }) - E4_INDEX;
+}
+
 /** The natural note (no accidental) drawn at a given staff step. */
 export function stepToNaturalNote(step: number): Note {
   const totalIndex = step + E4_INDEX;
@@ -102,6 +107,8 @@ export function yToStep(y: number): number {
 export interface StaffOptions {
   /** Called when the user clicks the staff to add a note. `displayAsFlat` reflects the Ctrl/Cmd modifier. */
   onNoteClick: (note: Note, displayAsFlat: boolean) => void;
+  /** When set, draws a vertical caret marking the keyboard input cursor's token position. */
+  cursorIndex?: number;
 }
 
 function staffLine(x1: number, x2: number, step: number, className: string): string {
@@ -120,6 +127,12 @@ function noteGlyph(note: Note, x: number, flatDisplay = false): string {
   const symbol = flatDisplay ? "♭" : note.accidental === "sharp" ? "♯" : null;
   const accidental = symbol ? `<text x="${x - 12}" y="${y + 4}" class="staff-input__accidental">${symbol}</text>` : "";
   return `${accidental}<ellipse cx="${x}" cy="${y}" rx="${NOTEHEAD_RX}" ry="${NOTEHEAD_RY}" class="staff-input__notehead" />`;
+}
+
+/** Markup for the keyboard input cursor: a thin vertical line spanning the staff's height at `x`. */
+function cursorLine(x: number): string {
+  const cursorX = x - NOTE_SPACING / 2;
+  return `<line x1="${cursorX}" y1="0" x2="${cursorX}" y2="${SVG_HEIGHT}" class="staff-input__cursor" />`;
 }
 
 /**
@@ -217,12 +230,16 @@ export function renderStaff(
     .map(({ note, flatDisplay }, index) => noteGlyph(note, notesStartX + index * NOTE_SPACING, flatDisplay))
     .join("");
 
+  const cursorMarkup =
+    options.cursorIndex !== undefined ? cursorLine(notesStartX + options.cursorIndex * NOTE_SPACING) : "";
+
   container.innerHTML = `
     <svg viewBox="0 0 ${width} ${SVG_HEIGHT}" class="staff-input__svg" role="img" aria-label="Clickable staff for adding notes">
       ${lines.join("")}
       ${keySigMarkup}
       ${clef}
       ${noteGlyphs}
+      ${cursorMarkup}
       <rect x="0" y="0" width="${width}" height="${SVG_HEIGHT}" class="staff-input__overlay" />
     </svg>
   `;
