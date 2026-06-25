@@ -94,6 +94,7 @@ app.innerHTML = `
       <select id="export-format">
         <option value="pdf">PDF</option>
         <option value="png">Image (PNG)</option>
+        <option value="midi">MIDI</option>
       </select>
       <button id="export-button" type="button" disabled>Export</button>
     </div>
@@ -625,12 +626,18 @@ exportButton.addEventListener("click", async () => {
 
   exportButton.disabled = true;
   try {
-    const { exportElement } = await import("./export/exporter");
     const { buildExportFilename } = await import("./export/filename");
-    exportCapture.style.width = `${output.offsetWidth}px`;
-    renderTab(exportCapture, exportItems, defaultNoteLength(), { interactive: false }, titleInput.value);
     const filename = buildExportFilename(titleInput.value, ocarinaTypeId);
-    await exportElement(exportCapture, exportFormatSelect.value as ExportFormat, filename);
+
+    if (exportFormatSelect.value === "midi") {
+      const { buildMidiFile, downloadMidiFile } = await import("./midi/export");
+      downloadMidiFile(`${filename}.mid`, buildMidiFile(exportItems, defaultNoteLength()));
+    } else {
+      const { exportElement } = await import("./export/exporter");
+      exportCapture.style.width = `${output.offsetWidth}px`;
+      renderTab(exportCapture, exportItems, defaultNoteLength(), { interactive: false }, titleInput.value);
+      await exportElement(exportCapture, exportFormatSelect.value as ExportFormat, filename);
+    }
   } finally {
     exportCapture.innerHTML = "";
     exportButton.disabled = !currentItems.some((item) => item.result?.status === "found");
