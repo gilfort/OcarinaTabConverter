@@ -62,12 +62,23 @@ export function renderTab(
   }
 
   items.forEach((item, index) => {
+    if (item.token.lineBreak) {
+      container.appendChild(renderLineBreak());
+      return;
+    }
     container.appendChild(renderItem(item, index, defaultNoteLength, options));
   });
 
   if (items.some((item) => item.result?.status === "found")) {
     container.appendChild(renderLegend());
   }
+}
+
+/** A zero-height, full-width flex item that forces the next tab item onto a new row. */
+function renderLineBreak(): HTMLElement {
+  const lineBreak = document.createElement("div");
+  lineBreak.className = "tab-output__line-break";
+  return lineBreak;
 }
 
 /** Builds the per-note length override selector shown below each found note. */

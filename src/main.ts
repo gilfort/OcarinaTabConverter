@@ -94,7 +94,12 @@ app.innerHTML = `
     <button id="clear-button" type="button">Clear</button>
     <button id="staff-toggle" type="button" aria-expanded="false">Staff input</button>
   </div>
-  <div id="staff-input-container" class="staff-input" hidden></div>
+  <div id="staff-input-container" class="staff-input" hidden>
+    <div id="staff-toolbar">
+      <button id="staff-new-line-button" type="button">New line</button>
+    </div>
+    <div id="staff-svg-container"></div>
+  </div>
   <div id="tab-output" class="tab-output"></div>
   <div id="export-capture" class="tab-output" aria-hidden="true"></div>
   <dialog id="export-warning-dialog">
@@ -126,6 +131,8 @@ const output = app.querySelector<HTMLDivElement>("#tab-output")!;
 const clearButton = app.querySelector<HTMLButtonElement>("#clear-button")!;
 const staffToggle = app.querySelector<HTMLButtonElement>("#staff-toggle")!;
 const staffContainer = app.querySelector<HTMLDivElement>("#staff-input-container")!;
+const staffSvgContainer = app.querySelector<HTMLDivElement>("#staff-svg-container")!;
+const staffNewLineButton = app.querySelector<HTMLButtonElement>("#staff-new-line-button")!;
 const exportFormatSelect = app.querySelector<HTMLSelectElement>("#export-format")!;
 const exportButton = app.querySelector<HTMLButtonElement>("#export-button")!;
 const exportCapture = app.querySelector<HTMLDivElement>("#export-capture")!;
@@ -259,7 +266,7 @@ function onLengthChange(index: number, value: NoteLengthOverride): void {
 function rerender(): void {
   renderTab(output, currentItems, defaultNoteLength(), { interactive: true, onLengthChange }, titleInput.value);
   if (!staffContainer.hidden) {
-    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
+    renderStaff(staffSvgContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
   }
 }
 
@@ -273,9 +280,25 @@ function handleStaffNoteClick(note: Note, displayAsFlat: boolean): void {
     const lastItem = currentItems[currentItems.length - 1];
     if (lastItem) {
       lastItem.flatDisplay = true;
-      renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
+      renderStaff(staffSvgContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
     }
   }
+  input.focus();
+}
+
+/** Inserts a "|" line-break token at the note input's cursor position, padding with spaces as needed. */
+function insertLineBreakAtCursor(): void {
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  const before = input.value.slice(0, start);
+  const after = input.value.slice(end);
+  const spaceBefore = before.length > 0 && !/\s$/.test(before) ? " " : "";
+  const spaceAfter = after.length > 0 && !/^\s/.test(after) ? " " : "";
+  const insertion = `${spaceBefore}|${spaceAfter}`;
+  input.value = `${before}${insertion}${after}`;
+  const cursor = start + insertion.length;
+  input.setSelectionRange(cursor, cursor);
+  update();
   input.focus();
 }
 
@@ -334,9 +357,10 @@ staffToggle.addEventListener("click", () => {
   staffContainer.hidden = expanded;
   staffToggle.setAttribute("aria-expanded", String(!expanded));
   if (!expanded) {
-    renderStaff(staffContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
+    renderStaff(staffSvgContainer, currentItems, { onNoteClick: handleStaffNoteClick }, keySignature);
   }
 });
+staffNewLineButton.addEventListener("click", insertLineBreakAtCursor);
 
 /** Asks the user how to handle out-of-range notes before exporting, via the warning dialog. */
 function askOutOfRangeChoice(): Promise<"shift" | "strip" | "cancel"> {

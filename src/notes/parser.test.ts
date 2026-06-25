@@ -81,6 +81,17 @@ describe("parseNotes", () => {
       "D",
     ]);
   });
+
+  it("parses a '|' token as a line break, not a note or rest", () => {
+    const result = parseNotes("C4 | D4");
+    expect(result.tokens.map((t) => t.lineBreak)).toEqual([false, true, false]);
+    expect(result.tokens[1]).toMatchObject({ note: null, rest: null, error: null, lineBreak: true });
+  });
+
+  it("sets lineBreak to false on notes and rests", () => {
+    const result = parseNotes("C4 R4");
+    expect(result.tokens.every((t) => t.lineBreak === false)).toBe(true);
+  });
 });
 
 describe("parseNotes with a key signature", () => {

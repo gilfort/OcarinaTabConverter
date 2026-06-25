@@ -276,6 +276,16 @@ h1 {
   overflow-x: auto;
 }
 
+#staff-toolbar {
+  margin-bottom: 0.5rem;
+}
+
+#staff-new-line-button {
+  font-size: 0.9rem;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
 .staff-input__svg {
   height: 118px;
   display: block;
@@ -346,6 +356,13 @@ h1 {
 
 .tab-placeholder {
   color: #888;
+}
+
+.tab-output__line-break {
+  flex-basis: 100%;
+  width: 100%;
+  height: 0;
+  margin: 0;
 }
 
 .tab-cell {

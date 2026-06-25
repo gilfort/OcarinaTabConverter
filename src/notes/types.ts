@@ -22,6 +22,8 @@ export interface ParsedToken {
   rest: NoteLength | null;
   /** Set when `note` and `rest` are null, describing why the token could not be parsed. */
   error: string | null;
+  /** Set when this token is a manual line break ("|"), forcing the next item onto a new row. */
+  lineBreak: boolean;
 }
 
 export interface ParseResult {

@@ -3,6 +3,7 @@ import { DEFAULT_NOTE_LENGTH, REST_LENGTH_CODES, type NoteLength } from "./lengt
 
 const NOTE_PATTERN = /^([A-Ga-g])([#bnN]?)(-?\d+)?$/;
 const REST_PATTERN = /^[Rr](\d+)?$/;
+const LINE_BREAK_TOKEN = "|";
 
 const PITCH_CLASSES: readonly PitchClass[] = ["A", "B", "C", "D", "E", "F", "G"];
 
@@ -93,14 +94,18 @@ export function parseNotes(input: string, keySignature?: KeySignature): ParseRes
     .filter((token) => token.length > 0);
 
   const tokens: ParsedToken[] = rawTokens.map((raw, index) => {
+    if (raw.trim() === LINE_BREAK_TOKEN) {
+      return { raw, index, note: null, rest: null, error: null, lineBreak: true };
+    }
+
     const restMatch = REST_PATTERN.exec(raw.trim());
     if (restMatch) {
       const { rest, error } = parseRestToken(raw, restMatch);
-      return { raw, index, note: null, rest, error };
+      return { raw, index, note: null, rest, error, lineBreak: false };
     }
 
     const { note, error } = parseNoteToken(raw, keySignature);
-    return { raw, index, note, rest: null, error };
+    return { raw, index, note, rest: null, error, lineBreak: false };
   });
 
   return { tokens };

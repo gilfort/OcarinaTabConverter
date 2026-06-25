@@ -193,3 +193,37 @@ describe("renderTab rests", () => {
     expect(cell.querySelectorAll(".tab-cell__dash")).toHaveLength(3);
   });
 });
+
+describe("renderTab line breaks", () => {
+  it("renders a line-break token as a full-width break, not a tab cell", () => {
+    const { tokens } = parseNotes("C4 | D4");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+
+    expect(container.querySelectorAll(".tab-cell")).toHaveLength(2);
+    expect(container.querySelectorAll(".tab-output__line-break")).toHaveLength(1);
+  });
+
+  it("places the line break between the two note cells in document order", () => {
+    const { tokens } = parseNotes("C4 | D4");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+
+    const childClasses = Array.from(container.children).map((child) => child.className);
+    expect(childClasses[0]).toContain("tab-cell");
+    expect(childClasses[1]).toBe("tab-output__line-break");
+    expect(childClasses[2]).toContain("tab-cell");
+  });
+
+  it("does not give a line-break token a fingering result", () => {
+    const { tokens } = parseNotes("|");
+    const [item] = buildTabItems(tokens, "12hole");
+
+    expect(item.token.lineBreak).toBe(true);
+    expect(item.result).toBeNull();
+  });
+});
