@@ -300,7 +300,12 @@ pauseButton.addEventListener("click", () => {
 stopButton.addEventListener("click", stopPlayback);
 
 function onLengthChange(index: number, value: NoteLengthOverride): void {
-  currentItems[index].lengthOverride = value;
+  const sourceIndex = currentItems[index].token.sourceIndex;
+  currentItems.forEach((item) => {
+    if (item.token.sourceIndex === sourceIndex) {
+      item.lengthOverride = value;
+    }
+  });
   rerender();
 }
 

@@ -20,6 +20,12 @@ export interface ParsedToken {
   raw: string;
   /** Index of this token within the parsed sequence. */
   index: number;
+  /**
+   * Index of the originally-written token this one came from, before repeat expansion.
+   * Equal to `index` for unexpanded tokens; shared by every duplicate produced by a
+   * `|: ... :|` repeat, so a length-override change on one copy can propagate to all of them.
+   */
+  sourceIndex: number;
   note: Note | null;
   /** Set when this token is a rest (e.g. "R4"), giving its duration. */
   rest: NoteLength | null;

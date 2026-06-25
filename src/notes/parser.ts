@@ -102,22 +102,22 @@ export function parseNotes(input: string, keySignature?: KeySignature): ParseRes
 
   const tokens: ParsedToken[] = rawTokens.map((raw, index) => {
     if (raw.trim() === LINE_BREAK_TOKEN) {
-      return { raw, index, note: null, rest: null, error: null, lineBreak: true, marker: null };
+      return { raw, index, sourceIndex: index, note: null, rest: null, error: null, lineBreak: true, marker: null };
     }
 
     const marker = MARKER_TOKENS[raw.trim()];
     if (marker) {
-      return { raw, index, note: null, rest: null, error: null, lineBreak: false, marker };
+      return { raw, index, sourceIndex: index, note: null, rest: null, error: null, lineBreak: false, marker };
     }
 
     const restMatch = REST_PATTERN.exec(raw.trim());
     if (restMatch) {
       const { rest, error } = parseRestToken(raw, restMatch);
-      return { raw, index, note: null, rest, error, lineBreak: false, marker: null };
+      return { raw, index, sourceIndex: index, note: null, rest, error, lineBreak: false, marker: null };
     }
 
     const { note, error } = parseNoteToken(raw, keySignature);
-    return { raw, index, note, rest: null, error, lineBreak: false, marker: null };
+    return { raw, index, sourceIndex: index, note, rest: null, error, lineBreak: false, marker: null };
   });
 
   return { tokens };

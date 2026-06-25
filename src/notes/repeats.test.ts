@@ -62,4 +62,11 @@ describe("expandRepeats", () => {
     const result = expand("C4 |: D4 E4 :| F4");
     result.forEach((token, i) => expect(token.index).toBe(i));
   });
+
+  it("keeps both copies of a repeated note pointing at the same sourceIndex", () => {
+    const result = expand("C4 |: D4 :| F4");
+    const dCopies = result.filter((t) => t.raw === "D4");
+    expect(dCopies).toHaveLength(2);
+    expect(dCopies[0].sourceIndex).toBe(dCopies[1].sourceIndex);
+  });
 });
