@@ -30,7 +30,36 @@ export const REST_LENGTH_CODES: Record<string, NoteLength> = {
   "8": "eighth",
 };
 
+/** Reverse of REST_LENGTH_CODES: maps a note length to its rest-token suffix digit. */
+export const REST_LENGTH_TOKENS: Record<NoteLength, string> = Object.fromEntries(
+  Object.entries(REST_LENGTH_CODES).map(([code, length]) => [length, code])
+) as Record<NoteLength, string>;
+
 /** Resolves an override to a concrete length, falling back to the global default. */
 export function resolveNoteLength(override: NoteLengthOverride, defaultLength: NoteLength): NoteLength {
   return override === "default" ? defaultLength : override;
+}
+
+const NOTE_LENGTH_BY_UNITS: ReadonlyArray<{ length: NoteLength; units: number }> = (
+  Object.entries(NOTE_LENGTH_UNITS) as [NoteLength, number][]
+).map(([length, units]) => ({ length, units }));
+
+/**
+ * Rounds a duration, given in quarter-note units, to the nearest supported note length
+ * (eighth/quarter/half/whole), comparing on a log scale so e.g. a dotted-eighth rounds
+ * to the nearer of eighth/quarter.
+ */
+export function roundToNoteLength(units: number): NoteLength {
+  const logUnits = Math.log2(Math.max(units, NOTE_LENGTH_UNITS.eighth / 4));
+
+  let best = NOTE_LENGTH_BY_UNITS[0];
+  let bestDistance = Infinity;
+  for (const candidate of NOTE_LENGTH_BY_UNITS) {
+    const distance = Math.abs(logUnits - Math.log2(candidate.units));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = candidate;
+    }
+  }
+  return best.length;
 }

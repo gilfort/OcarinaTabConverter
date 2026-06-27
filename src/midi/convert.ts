@@ -1,5 +1,11 @@
 import { formatNote } from "../notes/format";
-import { NOTE_LENGTH_UNITS, REST_LENGTH_CODES, type NoteLength, type NoteLengthOverride } from "../notes/length";
+import {
+  NOTE_LENGTH_UNITS,
+  REST_LENGTH_TOKENS,
+  roundToNoteLength,
+  type NoteLength,
+  type NoteLengthOverride,
+} from "../notes/length";
 import type { Note } from "../notes/types";
 import { toAbsoluteSemitone } from "../fingering/normalize";
 import type { OcarinaType } from "../fingering/types";
@@ -21,11 +27,6 @@ const CHROMATIC_SPELLING: ReadonlyArray<{ pitchClass: Note["pitchClass"]; accide
   { pitchClass: "B", accidental: null },
 ];
 
-/** Reverse of REST_LENGTH_CODES: maps a note length to its rest-token suffix digit. */
-const REST_LENGTH_TOKENS: Record<NoteLength, string> = Object.fromEntries(
-  Object.entries(REST_LENGTH_CODES).map(([code, length]) => [length, code])
-) as Record<NoteLength, string>;
-
 /** A note name or rest token derived from a MIDI track, ready to feed into the note input. */
 export interface ConvertedToken {
   raw: string;
@@ -39,28 +40,9 @@ export function midiPitchToNote(pitch: number): Note {
   return { pitchClass: spelling.pitchClass, accidental: spelling.accidental, octave };
 }
 
-const NOTE_LENGTH_BY_UNITS: ReadonlyArray<{ length: NoteLength; units: number }> = (
-  Object.entries(NOTE_LENGTH_UNITS) as [NoteLength, number][]
-).map(([length, units]) => ({ length, units }));
-
-/**
- * Rounds a tick duration to the nearest supported note length (eighth/quarter/half/whole),
- * comparing on a log scale so e.g. a dotted-eighth rounds to the nearer of eighth/quarter.
- */
+/** Rounds a tick duration to the nearest supported note length (eighth/quarter/half/whole). */
 export function ticksToNoteLength(durationTicks: number, ticksPerQuarter: number): NoteLength {
-  const units = Math.max(durationTicks, 1) / ticksPerQuarter;
-  const logUnits = Math.log2(units);
-
-  let best = NOTE_LENGTH_BY_UNITS[0];
-  let bestDistance = Infinity;
-  for (const candidate of NOTE_LENGTH_BY_UNITS) {
-    const distance = Math.abs(logUnits - Math.log2(candidate.units));
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      best = candidate;
-    }
-  }
-  return best.length;
+  return roundToNoteLength(Math.max(durationTicks, 1) / ticksPerQuarter);
 }
 
 /**

@@ -31,6 +31,9 @@ import type { Accidental, KeySignature, Note, PitchClass } from "./notes/types";
 import { isMidiParseError, parseMidiFile } from "./midi/parser";
 import { computeGlobalMinMidiPitch, convertTrackToTokens } from "./midi/convert";
 import type { MidiTrack } from "./midi/types";
+import { parseMusicXmlFile } from "./musicxml/parser";
+import { convertVoiceToTokens } from "./musicxml/convert";
+import { isMusicXmlParseError, type MusicXmlVoice } from "./musicxml/types";
 import { buildPlaybackSchedule } from "./audio/schedule";
 import { PlaybackController } from "./audio/player";
 
@@ -92,6 +95,13 @@ app.innerHTML = `
       </div>
       <div id="midi-drop-zone" class="drop-zone">Drop a .mid/.midi file here to import notes</div>
       <p id="midi-error" class="error-text" hidden></p>
+      <div id="musicxml-import-row">
+        <label for="musicxml-file-input">Import MusicXML</label>
+        <input id="musicxml-file-input" type="file" accept=".mxl,.musicxml,.xml" />
+        <select id="musicxml-voice-select" hidden></select>
+      </div>
+      <div id="musicxml-drop-zone" class="drop-zone">Drop a .mxl/.musicxml file here to import notes</div>
+      <p id="musicxml-error" class="error-text" hidden></p>
       <div id="save-load-row">
         <button id="save-button" type="button">Save</button>
         <label for="load-file-input" id="load-button" class="button-label">Load</label>
@@ -246,6 +256,10 @@ const midiFileInput = app.querySelector<HTMLInputElement>("#midi-file-input")!;
 const midiDropZone = app.querySelector<HTMLDivElement>("#midi-drop-zone")!;
 const midiTrackSelect = app.querySelector<HTMLSelectElement>("#midi-track-select")!;
 const midiError = app.querySelector<HTMLParagraphElement>("#midi-error")!;
+const musicXmlFileInput = app.querySelector<HTMLInputElement>("#musicxml-file-input")!;
+const musicXmlDropZone = app.querySelector<HTMLDivElement>("#musicxml-drop-zone")!;
+const musicXmlVoiceSelect = app.querySelector<HTMLSelectElement>("#musicxml-voice-select")!;
+const musicXmlError = app.querySelector<HTMLParagraphElement>("#musicxml-error")!;
 const saveButton = app.querySelector<HTMLButtonElement>("#save-button")!;
 const loadFileInput = app.querySelector<HTMLInputElement>("#load-file-input")!;
 const loadDropZone = app.querySelector<HTMLDivElement>("#load-drop-zone")!;
@@ -829,6 +843,90 @@ midiDropZone.addEventListener("drop", (event) => {
   const file = event.dataTransfer?.files?.[0];
   if (file) {
     void handleMidiFile(file);
+  }
+});
+
+let musicXmlVoices: MusicXmlVoice[] = [];
+
+function showMusicXmlError(message: string): void {
+  musicXmlError.textContent = message;
+  musicXmlError.hidden = false;
+}
+
+function clearMusicXmlState(): void {
+  musicXmlError.hidden = true;
+  musicXmlVoiceSelect.hidden = true;
+  musicXmlVoiceSelect.innerHTML = "";
+  musicXmlVoices = [];
+}
+
+/** Populates the note input from a MusicXML voice, applying per-note length overrides derived from its durations. */
+function importMusicXmlVoice(voice: MusicXmlVoice): void {
+  const tokens = convertVoiceToTokens(voice.events);
+  input.value = tokens.map((token) => token.raw).join(" ");
+  update();
+  tokens.forEach((token, index) => {
+    if (currentItems[index]) {
+      currentItems[index].lengthOverride = token.lengthOverride;
+    }
+  });
+  rerender();
+}
+
+async function handleMusicXmlFile(file: File): Promise<void> {
+  clearMusicXmlState();
+
+  const buffer = await file.arrayBuffer();
+  const result = parseMusicXmlFile(buffer);
+  if (isMusicXmlParseError(result)) {
+    showMusicXmlError(result.error);
+    return;
+  }
+
+  musicXmlVoices = result.voices;
+  keySignature = result.keySignature;
+  renderKeySignatureUI();
+
+  if (musicXmlVoices.length > 1) {
+    musicXmlVoices.forEach((voice, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = voice.label;
+      musicXmlVoiceSelect.appendChild(option);
+    });
+    musicXmlVoiceSelect.hidden = false;
+  }
+
+  importMusicXmlVoice(musicXmlVoices[0]);
+}
+
+musicXmlFileInput.addEventListener("change", () => {
+  const file = musicXmlFileInput.files?.[0];
+  if (file) {
+    void handleMusicXmlFile(file);
+  }
+});
+
+musicXmlVoiceSelect.addEventListener("change", () => {
+  const voice = musicXmlVoices[Number(musicXmlVoiceSelect.value)];
+  if (voice) {
+    importMusicXmlVoice(voice);
+  }
+});
+
+musicXmlDropZone.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  musicXmlDropZone.classList.add("drop-zone--active");
+});
+musicXmlDropZone.addEventListener("dragleave", () => {
+  musicXmlDropZone.classList.remove("drop-zone--active");
+});
+musicXmlDropZone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  musicXmlDropZone.classList.remove("drop-zone--active");
+  const file = event.dataTransfer?.files?.[0];
+  if (file) {
+    void handleMusicXmlFile(file);
   }
 });
 
