@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseNotes } from "../notes/parser";
 import { expandRepeats } from "../notes/repeats";
-import { buildTabItems, renderTab } from "./render";
+import { buildTabItems, expandTabItemsForPlayback, renderTab } from "./render";
 
 describe("buildTabItems", () => {
   it("flags an invalid token with its error message, without a fingering result", () => {
@@ -281,7 +281,7 @@ describe("renderTab repeat/volta markers", () => {
   });
 
   it("renders an unmatched marker as an error cell, not a marker cell", () => {
-    const { tokens } = parseNotes("|: C4");
+    const { tokens } = parseNotes("C4 :| D4");
     const items = buildTabItems(expandRepeats(tokens), "12hole");
 
     const container = document.createElement("div");
@@ -289,5 +289,37 @@ describe("renderTab repeat/volta markers", () => {
 
     expect(container.querySelector(".tab-cell--marker")).toBeNull();
     expect(container.querySelector(".tab-cell--error")).not.toBeNull();
+  });
+});
+
+describe("expandTabItemsForPlayback", () => {
+  it("duplicates a repeated section for playback without altering the displayed (unexpanded) items", () => {
+    const { tokens } = parseNotes("C4 |: D4 E4 :| F4");
+    const items = buildTabItems(tokens, "12hole");
+
+    expect(items.map((i) => i.token.raw)).toEqual(["C4", "|:", "D4", "E4", ":|", "F4"]);
+
+    const expanded = expandTabItemsForPlayback(items);
+    expect(expanded.map((i) => i.token.raw)).toEqual(["C4", "|:", "D4", "E4", ":|", "D4", "E4", "F4"]);
+  });
+
+  it("applies a length override set on the displayed copy to both duplicates of a repeated note", () => {
+    const { tokens } = parseNotes("|: D4 :|");
+    const items = buildTabItems(tokens, "12hole");
+    const dItem = items.find((i) => i.token.raw === "D4")!;
+    dItem.lengthOverride = "half";
+
+    const expanded = expandTabItemsForPlayback(items);
+    const dCopies = expanded.filter((i) => i.token.raw === "D4");
+    expect(dCopies).toHaveLength(2);
+    expect(dCopies.every((i) => i.lengthOverride === "half")).toBe(true);
+  });
+
+  it("implicitly closes an unmatched repeat start at the end for playback only", () => {
+    const { tokens } = parseNotes("C4 |: D4");
+    const items = buildTabItems(tokens, "12hole");
+
+    expect(items.map((i) => i.token.raw)).toEqual(["C4", "|:", "D4"]);
+    expect(expandTabItemsForPlayback(items).map((i) => i.token.raw)).toEqual(["C4", "|:", "D4", ":|", "D4"]);
   });
 });

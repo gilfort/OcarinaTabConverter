@@ -10,6 +10,7 @@ import {
   type NoteLength,
   type NoteLengthOverride,
 } from "../notes/length";
+import { expandRepeats } from "../notes/repeats";
 import { REST_GLYPHS } from "../notes/restGlyphs";
 
 export interface TabItem {
@@ -34,6 +35,31 @@ export function buildTabItems(tokens: ParsedToken[], ocarinaTypeId: OcarinaTypeI
     result: token.note ? lookupFingering(token.note, ocarinaTypeId) : null,
     lengthOverride: "default",
   }));
+}
+
+/**
+ * Expands `items` (as displayed, with repeat/volta markers shown once like on a real sheet of
+ * music) into the literal played sequence, for playback and MIDI export. Each duplicate copy of
+ * a repeated note reuses its single displayed copy's fingering result and length override,
+ * matched by the underlying token's `sourceIndex`.
+ */
+export function expandTabItemsForPlayback(items: TabItem[]): TabItem[] {
+  const bySourceIndex = new Map<number, TabItem>();
+  for (const item of items) {
+    if (!bySourceIndex.has(item.token.sourceIndex)) {
+      bySourceIndex.set(item.token.sourceIndex, item);
+    }
+  }
+
+  return expandRepeats(items.map((item) => item.token)).map((token) => {
+    const original = bySourceIndex.get(token.sourceIndex);
+    return {
+      token,
+      result: original?.result ?? null,
+      lengthOverride: original?.lengthOverride ?? "default",
+      flatDisplay: original?.flatDisplay,
+    };
+  });
 }
 
 /** Renders a sequence of tab items (diagram + label, or error/marker) into the given container. */

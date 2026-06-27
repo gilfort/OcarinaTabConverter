@@ -5,7 +5,6 @@ import type { OcarinaTypeId } from "./fingering/types";
 import type { ExportFormat } from "./export/exporter";
 import { shiftNoteIntoRange } from "./export/octaveShift";
 import { parseNotes, splitRawTokens } from "./notes/parser";
-import { expandRepeats } from "./notes/repeats";
 import { formatNote } from "./notes/format";
 import {
   DEFAULT_OCTAVE,
@@ -24,7 +23,7 @@ import {
   type NoteLength,
   type NoteLengthOverride,
 } from "./notes/length";
-import { buildTabItems, renderTab, type TabItem } from "./ui/render";
+import { buildTabItems, expandTabItemsForPlayback, renderTab, type TabItem } from "./ui/render";
 import { renderStaff } from "./ui/staff";
 import { formatKeySignatureSummary, renderKeySignaturePicker } from "./ui/keySignature";
 import type { Accidental, KeySignature, Note, PitchClass } from "./notes/types";
@@ -404,7 +403,7 @@ playButton.addEventListener("click", () => {
   if (playbackController.state === "paused") {
     playbackController.resume();
   } else {
-    const schedule = buildPlaybackSchedule(currentItems, defaultNoteLength());
+    const schedule = buildPlaybackSchedule(expandTabItemsForPlayback(currentItems), defaultNoteLength());
     playbackController.play(schedule, updatePlaybackButtons);
   }
   updatePlaybackButtons();
@@ -575,10 +574,9 @@ function update(): void {
   stopPlayback();
   const ocarinaTypeId = typeSelect.value as OcarinaTypeId;
   const { tokens } = parseNotes(input.value, keySignature);
-  const expandedTokens = expandRepeats(tokens);
   const previousOverrides = currentItems.map((item) => item.lengthOverride);
   const previousFlatDisplay = currentItems.map((item) => item.flatDisplay);
-  currentItems = buildTabItems(expandedTokens, ocarinaTypeId);
+  currentItems = buildTabItems(tokens, ocarinaTypeId);
   currentItems.forEach((item, index) => {
     if (previousOverrides[index] !== undefined) {
       item.lengthOverride = previousOverrides[index];
@@ -743,7 +741,7 @@ exportButton.addEventListener("click", async () => {
 
     if (exportFormatSelect.value === "midi") {
       const { buildMidiFile, downloadMidiFile } = await import("./midi/export");
-      downloadMidiFile(`${filename}.mid`, buildMidiFile(exportItems, defaultNoteLength()));
+      downloadMidiFile(`${filename}.mid`, buildMidiFile(expandTabItemsForPlayback(exportItems), defaultNoteLength()));
     } else {
       const { exportElement } = await import("./export/exporter");
       exportCapture.style.width = `${output.offsetWidth}px`;

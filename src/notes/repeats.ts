@@ -4,7 +4,9 @@ import type { ParsedToken } from "./types";
  * Expands `|: ... :|` repeat barlines and `[1`/`[2` volta endings into the literal
  * played-back token sequence, keeping the original marker tokens inline at the points
  * where they occur so the tab can still show the repeat/volta symbols as written.
- * Malformed markers (unmatched, orphaned, or nested) are left in place with `.error` set.
+ * Malformed markers (orphaned or nested) are left in place with `.error` set. A `|:`
+ * with no later `:|` is not an error: it implicitly closes at the end of the piece,
+ * so the whole rest of the song repeats once.
  */
 export function expandRepeats(tokens: ParsedToken[]): ParsedToken[] {
   const result: ParsedToken[] = [];
@@ -38,14 +40,29 @@ export function expandRepeats(tokens: ParsedToken[]): ParsedToken[] {
       }
     }
 
-    if (endIndex === -1) {
-      const message = nested
-        ? `"${token.raw}" cannot contain a nested "|:"`
-        : `"${token.raw}" has no matching ":|"`;
-      result.push({ ...token, error: message });
+    if (endIndex === -1 && nested) {
+      result.push({ ...token, error: `"${token.raw}" cannot contain a nested "|:"` });
       i++;
       continue;
     }
+
+    // No later ":|" found (and not blocked by nesting): implicitly close at the end of the
+    // token stream, so the rest of the song is treated as the repeated block.
+    const hasExplicitEnd = endIndex !== -1;
+    if (!hasExplicitEnd) endIndex = tokens.length;
+    const repeatEndToken: ParsedToken = hasExplicitEnd
+      ? tokens[endIndex]
+      : {
+          raw: ":|",
+          index: endIndex,
+          sourceIndex: endIndex,
+          note: null,
+          rest: null,
+          error: null,
+          lineBreak: false,
+          marker: "repeatEnd",
+          tie: null,
+        };
 
     const inner = tokens.slice(i + 1, endIndex);
     const voltaOneIndex = inner.findIndex((t) => t.marker === "voltaOne");
@@ -68,7 +85,7 @@ export function expandRepeats(tokens: ParsedToken[]): ParsedToken[] {
     if (voltaOneIndex !== -1) {
       result.push(inner[voltaOneIndex], ...ending1);
     }
-    result.push(tokens[endIndex], ...common);
+    result.push(repeatEndToken, ...common);
     if (voltaTwoToken) {
       result.push(voltaTwoToken, ...ending2);
     }

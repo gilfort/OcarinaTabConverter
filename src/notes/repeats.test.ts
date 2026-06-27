@@ -28,10 +28,15 @@ describe("expandRepeats", () => {
     expect(raws(result)).toEqual(["|:", "C4", "[1", "D4", ":|", "C4", "F4"]);
   });
 
-  it("flags an unmatched repeat start", () => {
+  it("implicitly closes an unmatched repeat start at the end of the song", () => {
     const result = expand("C4 |: D4");
-    const marker = result.find((t) => t.marker === "repeatStart");
-    expect(marker?.error).toBe('"|:" has no matching ":|"');
+    expect(raws(result)).toEqual(["C4", "|:", "D4", ":|", "D4"]);
+    expect(result.every((t) => t.error === null)).toBe(true);
+  });
+
+  it("implicitly closes an unmatched repeat start that also has a first-ending volta", () => {
+    const result = expand("|: C4 [1 D4");
+    expect(raws(result)).toEqual(["|:", "C4", "[1", "D4", ":|", "C4"]);
   });
 
   it("flags an unmatched repeat end", () => {
