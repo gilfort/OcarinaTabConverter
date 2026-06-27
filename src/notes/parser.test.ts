@@ -94,6 +94,71 @@ describe("parseNotes", () => {
   });
 });
 
+describe("parseNotes with a tie/legato pair", () => {
+  it("splits 'C4-D4' into two tokens marked as tie start/end", () => {
+    const result = parseNotes("C4-D4");
+    expect(result.tokens).toHaveLength(2);
+    expect(result.tokens[0]).toMatchObject({ raw: "C4", tie: "start", error: null });
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "C", octave: 4 });
+    expect(result.tokens[1]).toMatchObject({ raw: "D4", tie: "end", error: null });
+    expect(result.tokens[1].note).toMatchObject({ pitchClass: "D", octave: 4 });
+  });
+
+  it("gives each tied note its own index and sourceIndex", () => {
+    const result = parseNotes("C4-D4");
+    expect(result.tokens[0].index).toBe(0);
+    expect(result.tokens[1].index).toBe(1);
+    expect(result.tokens[0].sourceIndex).toBe(0);
+    expect(result.tokens[1].sourceIndex).toBe(1);
+  });
+
+  it("supports a tied pair with the same pitch, e.g. 'C4-C4'", () => {
+    const result = parseNotes("C4-C4");
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "C", octave: 4 });
+    expect(result.tokens[1].note).toMatchObject({ pitchClass: "C", octave: 4 });
+  });
+
+  it("keeps ties and untied notes in correct order within a sequence", () => {
+    const result = parseNotes("C4 D4-E4 F4");
+    expect(result.tokens.map((t) => [t.raw, t.tie])).toEqual([
+      ["C4", null],
+      ["D4", "start"],
+      ["E4", "end"],
+      ["F4", null],
+    ]);
+  });
+
+  it("supports notes without an explicit octave on either side", () => {
+    const result = parseNotes("C-D");
+    expect(result.tokens[0].note).toMatchObject({ pitchClass: "C", octave: 4 });
+    expect(result.tokens[1].note).toMatchObject({ pitchClass: "D", octave: 4 });
+  });
+
+  it("reports a clear parse error for an invalid note on either side, with no silent fallback", () => {
+    const result = parseNotes("C4-H4");
+    expect(result.tokens).toHaveLength(1);
+    expect(result.tokens[0].note).toBeNull();
+    expect(result.tokens[0].tie).toBeNull();
+    expect(result.tokens[0].error).toMatch(/not a valid note name/);
+  });
+
+  it("reports a clear parse error when a rest is involved, with no silent fallback", () => {
+    const result = parseNotes("R4-C4");
+    expect(result.tokens).toHaveLength(1);
+    expect(result.tokens[0].note).toBeNull();
+    expect(result.tokens[0].rest).toBeNull();
+    expect(result.tokens[0].error).not.toBeNull();
+  });
+
+  it("no longer supports negative octaves, since '-' is now reserved for ties", () => {
+    const result = parseNotes("C-1");
+    expect(result.tokens).toHaveLength(1);
+    expect(result.tokens[0].note).toBeNull();
+    expect(result.tokens[0].tie).toBeNull();
+    expect(result.tokens[0].error).toMatch(/not a valid note name/);
+  });
+});
+
 describe("parseNotes with a key signature", () => {
   it("applies the key signature's accidental to a note with no explicit accidental", () => {
     const result = parseNotes("F4", { F: "sharp" });

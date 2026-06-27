@@ -129,6 +129,14 @@ function noteGlyph(note: Note, x: number, flatDisplay = false): string {
   return `${accidental}<ellipse cx="${x}" cy="${y}" rx="${NOTEHEAD_RX}" ry="${NOTEHEAD_RY}" class="staff-input__notehead" />`;
 }
 
+/** Markup for a tie/slur arc connecting two noteheads at (x1,y1) and (x2,y2). */
+function tieArc(x1: number, y1: number, x2: number, y2: number): string {
+  const midX = (x1 + x2) / 2;
+  const sag = 7;
+  const arcY = Math.max(y1, y2) + sag;
+  return `<path d="M ${x1} ${y1 + 6} Q ${midX} ${arcY} ${x2} ${y2 + 6}" class="staff-input__tie" />`;
+}
+
 /** Markup for the keyboard input cursor: a thin vertical line spanning the staff's height at `x`. */
 function cursorLine(x: number): string {
   const cursorX = x - NOTE_SPACING / 2;
@@ -203,7 +211,7 @@ export function renderStaff(
 ): void {
   const notes = items
     .filter((item): item is TabItem & { token: { note: Note } } => item.token.note !== null)
-    .map((item) => ({ note: item.token.note, flatDisplay: item.flatDisplay ?? false }));
+    .map((item) => ({ note: item.token.note, flatDisplay: item.flatDisplay ?? false, tie: item.token.tie }));
 
   const { markup: keySigMarkup, width: keySigWidth } = keySignatureGlyphs(
     keySignature,
@@ -230,6 +238,20 @@ export function renderStaff(
     .map(({ note, flatDisplay }, index) => noteGlyph(note, notesStartX + index * NOTE_SPACING, flatDisplay))
     .join("");
 
+  const tieArcs = notes
+    .map((entry, index) => {
+      const next = notes[index + 1];
+      if (entry.tie !== "start" || !next || next.tie !== "end") {
+        return "";
+      }
+      const x1 = notesStartX + index * NOTE_SPACING;
+      const x2 = notesStartX + (index + 1) * NOTE_SPACING;
+      const y1 = stepToY(entry.flatDisplay ? noteToStep(entry.note) + 1 : noteToStep(entry.note));
+      const y2 = stepToY(next.flatDisplay ? noteToStep(next.note) + 1 : noteToStep(next.note));
+      return tieArc(x1, y1, x2, y2);
+    })
+    .join("");
+
   const cursorMarkup =
     options.cursorIndex !== undefined ? cursorLine(notesStartX + options.cursorIndex * NOTE_SPACING) : "";
 
@@ -238,6 +260,7 @@ export function renderStaff(
       ${lines.join("")}
       ${keySigMarkup}
       ${clef}
+      ${tieArcs}
       ${noteGlyphs}
       ${cursorMarkup}
       <rect x="0" y="0" width="${width}" height="${SVG_HEIGHT}" class="staff-input__overlay" />

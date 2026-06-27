@@ -195,6 +195,33 @@ describe("renderTab rests", () => {
   });
 });
 
+describe("renderTab tie pairs", () => {
+  it("marks the two cells of a tie pair with tie-start/tie-end classes", () => {
+    const { tokens } = parseNotes("C4-D4");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+
+    const cells = container.querySelectorAll(".tab-cell");
+    expect(cells).toHaveLength(2);
+    expect(cells[0].classList.contains("tab-cell--tie-start")).toBe(true);
+    expect(cells[1].classList.contains("tab-cell--tie-end")).toBe(true);
+  });
+
+  it("does not add tie classes to untied notes", () => {
+    const { tokens } = parseNotes("C4");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderTab(container, items, "quarter", { interactive: false });
+
+    const cell = container.querySelector(".tab-cell")!;
+    expect(cell.classList.contains("tab-cell--tie-start")).toBe(false);
+    expect(cell.classList.contains("tab-cell--tie-end")).toBe(false);
+  });
+});
+
 describe("renderTab line breaks", () => {
   it("renders a line-break token as a full-width break, not a tab cell", () => {
     const { tokens } = parseNotes("C4 | D4");

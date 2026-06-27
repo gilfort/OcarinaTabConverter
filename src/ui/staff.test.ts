@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { STEP_MAX, STEP_MIN, noteToStep, stepToFlattedNote, stepToNaturalNote, stepToSharpedNote, yToStep } from "./staff";
+import { parseNotes } from "../notes/parser";
+import { buildTabItems } from "./render";
+import {
+  STEP_MAX,
+  STEP_MIN,
+  noteToStep,
+  renderStaff,
+  stepToFlattedNote,
+  stepToNaturalNote,
+  stepToSharpedNote,
+  yToStep,
+} from "./staff";
 
 describe("noteToStep", () => {
   it("places E4 on the bottom staff line (step 0)", () => {
@@ -56,6 +67,28 @@ describe("stepToSharpedNote", () => {
   it("respells B# as the natural note above (C), rolling over to the next octave", () => {
     const bStep = noteToStep({ pitchClass: "B", octave: 4 });
     expect(stepToSharpedNote(bStep)).toEqual({ pitchClass: "C", accidental: null, octave: 5 });
+  });
+});
+
+describe("renderStaff tie pairs", () => {
+  it("draws a tie arc between the noteheads of a tied pair", () => {
+    const { tokens } = parseNotes("C4-D4");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderStaff(container, items, { onNoteClick: () => {} });
+
+    expect(container.querySelectorAll(".staff-input__tie")).toHaveLength(1);
+  });
+
+  it("draws no tie arc for untied notes", () => {
+    const { tokens } = parseNotes("C4 D4");
+    const items = buildTabItems(tokens, "12hole");
+
+    const container = document.createElement("div");
+    renderStaff(container, items, { onNoteClick: () => {} });
+
+    expect(container.querySelectorAll(".staff-input__tie")).toHaveLength(0);
   });
 });
 

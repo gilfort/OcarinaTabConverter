@@ -1,9 +1,16 @@
 import type { Accidental, KeySignature, Note, ParseResult, ParsedToken, PitchClass, RepeatMarker } from "./types";
 import { DEFAULT_NOTE_LENGTH, REST_LENGTH_CODES, type NoteLength } from "./length";
 
-const NOTE_PATTERN = /^([A-Ga-g])([#bnN]?)(-?\d+)?$/;
+const NOTE_PATTERN = /^([A-Ga-g])([#bnN]?)(\d+)?$/;
 const REST_PATTERN = /^[Rr](\d+)?$/;
 const LINE_BREAK_TOKEN = "|";
+
+/**
+ * Matches a tie/legato pair, e.g. "C4-D4": two note-shaped halves joined by a single "-".
+ * Only valid note characters are allowed on either side, so a rest ("R4-C4") or other
+ * non-note token never matches here and falls through to the generic invalid-note error.
+ */
+const TIE_PATTERN = /^([A-Ga-g][#bnN]?\d*)-([A-Ga-g][#bnN]?\d*)$/;
 
 const MARKER_TOKENS: Readonly<Record<string, RepeatMarker>> = {
   "|:": "repeatStart",
@@ -104,26 +111,69 @@ export function splitRawTokens(input: string): string[] {
 
 export function parseNotes(input: string, keySignature?: KeySignature): ParseResult {
   const rawTokens = splitRawTokens(input);
+  const tokens: ParsedToken[] = [];
 
-  const tokens: ParsedToken[] = rawTokens.map((raw, index) => {
-    if (raw.trim() === LINE_BREAK_TOKEN) {
-      return { raw, index, sourceIndex: index, note: null, rest: null, error: null, lineBreak: true, marker: null };
+  for (const raw of rawTokens) {
+    const trimmed = raw.trim();
+    const index = tokens.length;
+
+    if (trimmed === LINE_BREAK_TOKEN) {
+      tokens.push({ raw, index, sourceIndex: index, note: null, rest: null, error: null, lineBreak: true, marker: null, tie: null });
+      continue;
     }
 
-    const marker = MARKER_TOKENS[raw.trim()];
+    const marker = MARKER_TOKENS[trimmed];
     if (marker) {
-      return { raw, index, sourceIndex: index, note: null, rest: null, error: null, lineBreak: false, marker };
+      tokens.push({ raw, index, sourceIndex: index, note: null, rest: null, error: null, lineBreak: false, marker, tie: null });
+      continue;
     }
 
-    const restMatch = REST_PATTERN.exec(raw.trim());
+    const restMatch = REST_PATTERN.exec(trimmed);
     if (restMatch) {
       const { rest, error } = parseRestToken(raw, restMatch);
-      return { raw, index, sourceIndex: index, note: null, rest, error, lineBreak: false, marker: null };
+      tokens.push({ raw, index, sourceIndex: index, note: null, rest, error, lineBreak: false, marker: null, tie: null });
+      continue;
+    }
+
+    const tieMatch = TIE_PATTERN.exec(trimmed);
+    if (tieMatch) {
+      const [, firstRaw, secondRaw] = tieMatch;
+      const first = parseNoteToken(firstRaw, keySignature);
+      const second = parseNoteToken(secondRaw, keySignature);
+      if (first.error || second.error) {
+        const error = first.error ?? second.error;
+        tokens.push({ raw, index, sourceIndex: index, note: null, rest: null, error, lineBreak: false, marker: null, tie: null });
+        continue;
+      }
+
+      tokens.push({
+        raw: firstRaw,
+        index,
+        sourceIndex: index,
+        note: first.note,
+        rest: null,
+        error: null,
+        lineBreak: false,
+        marker: null,
+        tie: "start",
+      });
+      tokens.push({
+        raw: secondRaw,
+        index: index + 1,
+        sourceIndex: index + 1,
+        note: second.note,
+        rest: null,
+        error: null,
+        lineBreak: false,
+        marker: null,
+        tie: "end",
+      });
+      continue;
     }
 
     const { note, error } = parseNoteToken(raw, keySignature);
-    return { raw, index, sourceIndex: index, note, rest: null, error, lineBreak: false, marker: null };
-  });
+    tokens.push({ raw, index, sourceIndex: index, note, rest: null, error, lineBreak: false, marker: null, tie: null });
+  }
 
   return { tokens };
 }

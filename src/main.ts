@@ -36,93 +36,164 @@ import { PlaybackController } from "./audio/player";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
-  <div id="app-header">
-    <button id="menu-toggle" type="button" class="menu-toggle" aria-expanded="false" aria-controls="menu-drawer" aria-label="Open menu">☰</button>
-    <h1>Ocarina Tab Converter</h1>
-    <span id="menu-summary" class="menu-summary"></span>
+  <div id="top-bar" class="top-bar">
+    <button id="menu-toggle" type="button" class="icon-button" aria-expanded="false" aria-controls="menu-drawer" aria-label="Open menu">☰</button>
+    <h1 class="app-title"><span class="app-title__dot" aria-hidden="true">●</span>Ocarina Tab Converter</h1>
+    <span id="status-pill" class="status-pill"></span>
+    <div class="top-bar__actions">
+      <button id="help-toggle" type="button" class="button button--ghost">Help</button>
+    </div>
   </div>
   <div id="menu-overlay" class="menu-overlay" hidden></div>
   <aside id="menu-drawer" class="menu-drawer" hidden aria-label="Settings menu">
-    <button id="menu-close" type="button" class="menu-close" aria-label="Close menu">×</button>
-    <div id="supported-types">
-      <span class="supported-types__label">Supported ocarinas:</span>
-      ${supportedOcarinaTypes
-        .map(
-          (type) =>
-            `<span class="supported-types__item">${type.displayName} (${formatNormalizedNote(
-              type.range.min
-            )}–${formatNormalizedNote(type.range.max)})</span>`
-        )
-        .join("")}
-    </div>
-    <label for="ocarina-type">Ocarina type</label>
-    <select id="ocarina-type">
-      ${supportedOcarinaTypes
-        .map((type) => `<option value="${type.id}">${type.displayName}</option>`)
-        .join("")}
-    </select>
-    <div id="settings-row">
-      <label for="default-note-length">Default note length</label>
-      <select id="default-note-length">
-        ${NOTE_LENGTHS.map(
-          (length) =>
-            `<option value="${length}"${length === DEFAULT_NOTE_LENGTH ? " selected" : ""}>${NOTE_LENGTH_LABELS[length]}</option>`
-        ).join("")}
+    <button id="menu-close" type="button" class="icon-button menu-close" aria-label="Close menu">×</button>
+
+    <section class="drawer-group">
+      <h2 class="drawer-group__title">Instrument</h2>
+      <div id="supported-types">
+        <span class="supported-types__label">Supported ocarinas:</span>
+        ${supportedOcarinaTypes
+          .map(
+            (type) =>
+              `<span class="supported-types__item">${type.displayName} (${formatNormalizedNote(
+                type.range.min
+              )}–${formatNormalizedNote(type.range.max)})</span>`
+          )
+          .join("")}
+      </div>
+      <label for="ocarina-type">Ocarina type</label>
+      <select id="ocarina-type">
+        ${supportedOcarinaTypes
+          .map((type) => `<option value="${type.id}">${type.displayName}</option>`)
+          .join("")}
       </select>
-    </div>
-    <div id="playback-row">
-      <button id="play-button" type="button" disabled>▶ Play</button>
-      <button id="pause-button" type="button" disabled>⏸ Pause</button>
-      <button id="stop-button" type="button" disabled>⏹ Stop</button>
-    </div>
-    <div id="midi-import-row">
-      <label for="midi-file-input">Import MIDI</label>
-      <input id="midi-file-input" type="file" accept=".mid,.midi" />
-      <select id="midi-track-select" hidden></select>
-    </div>
-    <div id="midi-drop-zone" class="midi-drop-zone">Drop a .mid/.midi file here to import notes</div>
-    <p id="midi-error" class="midi-error" hidden></p>
-    <div id="save-load-row">
-      <button id="save-button" type="button">Save</button>
-      <label for="load-file-input" id="load-button" class="button-label">Load</label>
-      <input id="load-file-input" type="file" accept=".txt" hidden />
-    </div>
-    <div id="load-drop-zone" class="midi-drop-zone">Drop a saved .txt file here to load</div>
-    <p id="load-error" class="midi-error" hidden></p>
-    <div id="export-row">
-      <label for="export-format">Export as</label>
-      <select id="export-format">
-        <option value="pdf">PDF</option>
-        <option value="png">Image (PNG)</option>
-        <option value="midi">MIDI</option>
-      </select>
-      <button id="export-button" type="button" disabled>Export</button>
-    </div>
+      <div id="settings-row">
+        <label for="default-note-length">Default note length</label>
+        <select id="default-note-length">
+          ${NOTE_LENGTHS.map(
+            (length) =>
+              `<option value="${length}"${length === DEFAULT_NOTE_LENGTH ? " selected" : ""}>${NOTE_LENGTH_LABELS[length]}</option>`
+          ).join("")}
+        </select>
+      </div>
+      <div id="key-signature-row">
+        <button id="key-signature-toggle" type="button" aria-expanded="false">Key signature</button>
+        <span id="key-signature-summary"></span>
+      </div>
+      <div id="key-signature-container" class="key-signature-picker" hidden></div>
+    </section>
+
+    <section class="drawer-group">
+      <h2 class="drawer-group__title">File</h2>
+      <div id="midi-import-row">
+        <label for="midi-file-input">Import MIDI</label>
+        <input id="midi-file-input" type="file" accept=".mid,.midi" />
+        <select id="midi-track-select" hidden></select>
+      </div>
+      <div id="midi-drop-zone" class="drop-zone">Drop a .mid/.midi file here to import notes</div>
+      <p id="midi-error" class="error-text" hidden></p>
+      <div id="save-load-row">
+        <button id="save-button" type="button">Save</button>
+        <label for="load-file-input" id="load-button" class="button-label">Load</label>
+        <input id="load-file-input" type="file" accept=".txt" hidden />
+      </div>
+      <div id="load-drop-zone" class="drop-zone">Drop a saved .txt file here to load</div>
+      <p id="load-error" class="error-text" hidden></p>
+      <div id="export-row">
+        <label for="export-format">Export as</label>
+        <select id="export-format">
+          <option value="pdf">PDF</option>
+          <option value="png">Image (PNG)</option>
+          <option value="midi">MIDI</option>
+        </select>
+        <button id="export-button" type="button" class="button button--primary" disabled>Export</button>
+      </div>
+    </section>
   </aside>
-  <div id="title-input-row">
-    <label for="title-input">Title</label>
-    <input id="title-input" type="text" placeholder="Untitled" autocomplete="off" />
-  </div>
-  <div id="key-signature-row">
-    <button id="key-signature-toggle" type="button" aria-expanded="false">Key signature</button>
-    <span id="key-signature-summary"></span>
-  </div>
-  <div id="key-signature-container" class="key-signature-picker" hidden></div>
-  <div id="note-input-row">
-    <input id="note-input" type="text" placeholder="e.g. C4 D4 R4 E4" autocomplete="off" />
-    <button id="clear-button" type="button">Clear</button>
-    <button id="staff-toggle" type="button" aria-expanded="false">Staff input</button>
-  </div>
-  <div id="staff-input-container" class="staff-input" hidden>
-    <div id="staff-toolbar">
-      <button id="staff-new-line-button" type="button">New line</button>
-      <button id="staff-keys-toggle" type="button" aria-expanded="false">⌨ Keys</button>
+
+  <main id="main-canvas">
+    <div id="title-input-row">
+      <label for="title-input">Title</label>
+      <input id="title-input" type="text" placeholder="Untitled" autocomplete="off" />
     </div>
-    <div id="staff-keyboard-legend" hidden></div>
-    <div id="staff-svg-container" tabindex="0"></div>
-  </div>
-  <div id="tab-output" class="tab-output"></div>
-  <div id="export-capture" class="tab-output" aria-hidden="true"></div>
+
+    <div id="main-toolbar" class="main-toolbar">
+      <div id="input-mode-toggle" class="segmented" role="group" aria-label="Input mode">
+        <button id="text-mode-button" type="button" class="segmented__option" aria-pressed="true">Text</button>
+        <button id="staff-toggle" type="button" class="segmented__option" aria-pressed="false" aria-expanded="false">Staff</button>
+      </div>
+      <span id="input-mode-hint" class="toolbar-hint">Type note names like <code>C4</code>, or switch to Staff for piano-style input.</span>
+      <div id="playback-row">
+        <button id="play-button" type="button" disabled>▶ Play</button>
+        <button id="pause-button" type="button" disabled>⏸ Pause</button>
+        <button id="stop-button" type="button" disabled>⏹ Stop</button>
+      </div>
+    </div>
+
+    <div id="note-input-card" class="note-input-card">
+      <div id="note-input-row">
+        <input id="note-input" type="text" placeholder="e.g. C4 D4 R4 E4" autocomplete="off" />
+        <button id="clear-button" type="button">Clear</button>
+      </div>
+      <div id="note-hint-chips" class="hint-chips">
+        <button type="button" class="hint-chip" data-insert="C4">C4</button>
+        <button type="button" class="hint-chip" data-insert="D#4">D#4</button>
+        <button type="button" class="hint-chip" data-insert="Eb4">Eb4</button>
+        <button type="button" class="hint-chip" data-insert="R4">R4</button>
+        <button type="button" class="hint-chip" data-insert="|">|</button>
+        <button type="button" class="hint-chip" data-insert="|: :|">|: :|</button>
+      </div>
+      <div id="staff-input-container" class="staff-input" hidden>
+        <div id="staff-toolbar">
+          <button id="staff-new-line-button" type="button">New line</button>
+          <button id="staff-keys-toggle" type="button" aria-expanded="false">⌨ Keys</button>
+          <span class="toolbar-hint">Shift = sharp, Ctrl/Cmd = flat, A–K = piano keys</span>
+        </div>
+        <div id="staff-keyboard-legend" hidden></div>
+        <div id="staff-svg-container" tabindex="0"></div>
+      </div>
+    </div>
+
+    <div id="tab-output" class="tab-output"></div>
+    <div id="export-capture" class="tab-output" aria-hidden="true"></div>
+  </main>
+
+  <dialog id="help-modal" class="help-modal">
+    <div class="help-modal__header">
+      <h2>Help</h2>
+      <button id="help-close-button" type="button" class="icon-button" aria-label="Close help">×</button>
+    </div>
+    <section class="help-modal__section">
+      <h3>Note syntax</h3>
+      <table class="help-table">
+        <tbody>
+          <tr><td><code>C4</code>, <code>D#4</code>, <code>Eb4</code></td><td>Note name + optional accidental (<code>#</code> sharp, <code>b</code> flat, <code>n</code> force natural) + octave</td></tr>
+          <tr><td><code>C</code> (no octave)</td><td>Defaults to octave 4</td></tr>
+          <tr><td><code>R</code>, <code>R2</code>, <code>R4</code>, <code>R8</code></td><td>Rest (whole / half / quarter / eighth)</td></tr>
+          <tr><td><code>C4-D4</code></td><td>Tie/legato pair: <code>C4-C4</code> sounds as one continuous tone, <code>C4-D4</code> as two notes with no gap between them</td></tr>
+          <tr><td><code>|</code></td><td>Manual line break in the rendered tab</td></tr>
+          <tr><td><code>|:</code> … <code>:|</code></td><td>Repeat block</td></tr>
+          <tr><td><code>[1</code> / <code>[2</code></td><td>First/second-ending (volta) markers inside a repeat</td></tr>
+        </tbody>
+      </table>
+      <p>Separate tokens with spaces or commas — both <code>C4 D4</code> and <code>C4, D4</code> work.</p>
+    </section>
+    <section class="help-modal__section">
+      <h3>Staff keyboard shortcuts</h3>
+      <table class="help-table">
+        <tbody>
+          <tr><td><code>A S D F G H J K</code></td><td>Place the natural note for that column</td></tr>
+          <tr><td><code>Q W E R T Z U I</code></td><td>Place the sharp directly above the matching white key</td></tr>
+          <tr><td><code>Ctrl</code>/<code>Cmd</code> + white key</td><td>Place the flat instead of the natural</td></tr>
+          <tr><td><code>←</code> / <code>→</code></td><td>Move the insertion cursor without placing a note</td></tr>
+          <tr><td><code>Backspace</code> / <code>Delete</code></td><td>Remove the note before / at the cursor</td></tr>
+          <tr><td><code>1</code>–<code>5</code></td><td>Set the length for the next note placed</td></tr>
+          <tr><td><code>PageUp</code> / <code>PageDown</code></td><td>Shift the keyboard's octave up or down</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </dialog>
+
   <dialog id="export-warning-dialog">
     <p>
       Your tab includes notes marked as out of range for this ocarina. Choose how to handle them
@@ -140,7 +211,12 @@ const menuToggle = app.querySelector<HTMLButtonElement>("#menu-toggle")!;
 const menuClose = app.querySelector<HTMLButtonElement>("#menu-close")!;
 const menuDrawer = app.querySelector<HTMLDivElement>("#menu-drawer")!;
 const menuOverlay = app.querySelector<HTMLDivElement>("#menu-overlay")!;
-const menuSummary = app.querySelector<HTMLSpanElement>("#menu-summary")!;
+const statusPill = app.querySelector<HTMLSpanElement>("#status-pill")!;
+const helpToggle = app.querySelector<HTMLButtonElement>("#help-toggle")!;
+const helpModal = app.querySelector<HTMLDialogElement>("#help-modal")!;
+const helpCloseButton = app.querySelector<HTMLButtonElement>("#help-close-button")!;
+const textModeButton = app.querySelector<HTMLButtonElement>("#text-mode-button")!;
+const noteHintChips = app.querySelector<HTMLDivElement>("#note-hint-chips")!;
 const typeSelect = app.querySelector<HTMLSelectElement>("#ocarina-type")!;
 const defaultLengthSelect = app.querySelector<HTMLSelectElement>("#default-note-length")!;
 const playButton = app.querySelector<HTMLButtonElement>("#play-button")!;
@@ -248,11 +324,11 @@ function closeMenu(): void {
   menuToggle.focus();
 }
 
-/** Updates the header badge summarizing the current ocarina type and default note length. */
-function updateMenuSummary(): void {
+/** Updates the top-bar status pill summarizing the current ocarina type and default note length. */
+function updateStatusPill(): void {
   const type = supportedOcarinaTypes.find((candidate) => candidate.id === typeSelect.value);
   const lengthLabel = NOTE_LENGTH_LABELS[defaultLengthSelect.value as NoteLength];
-  menuSummary.textContent = type ? `${type.displayName}, ${lengthLabel}` : "";
+  statusPill.textContent = type ? `${type.displayName}, ${lengthLabel}` : "";
 }
 
 menuToggle.addEventListener("click", () => {
@@ -264,6 +340,13 @@ menuToggle.addEventListener("click", () => {
 });
 menuClose.addEventListener("click", closeMenu);
 menuOverlay.addEventListener("click", closeMenu);
+
+helpToggle.addEventListener("click", () => {
+  helpModal.showModal();
+});
+helpCloseButton.addEventListener("click", () => {
+  helpModal.close();
+});
 
 /** Refreshes the key signature summary text and picker (if open). */
 function renderKeySignatureUI(): void {
@@ -458,15 +541,15 @@ function handleStaffKeydown(event: KeyboardEvent): void {
   }
 }
 
-/** Inserts a "|" line-break token at the note input's cursor position, padding with spaces as needed. */
-function insertLineBreakAtCursor(): void {
+/** Inserts `text` as a new token at the note input's cursor position, padding with spaces as needed. */
+function insertTextAtCursor(text: string): void {
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? input.value.length;
   const before = input.value.slice(0, start);
   const after = input.value.slice(end);
   const spaceBefore = before.length > 0 && !/\s$/.test(before) ? " " : "";
   const spaceAfter = after.length > 0 && !/^\s/.test(after) ? " " : "";
-  const insertion = `${spaceBefore}|${spaceAfter}`;
+  const insertion = `${spaceBefore}${text}${spaceAfter}`;
   input.value = `${before}${insertion}${after}`;
   const cursor = start + insertion.length;
   input.setSelectionRange(cursor, cursor);
@@ -504,12 +587,12 @@ input.addEventListener("input", () => {
 typeSelect.addEventListener("change", () => {
   localStorage.setItem(OCARINA_TYPE_STORAGE_KEY, typeSelect.value);
   update();
-  updateMenuSummary();
+  updateStatusPill();
 });
 defaultLengthSelect.addEventListener("change", () => {
   localStorage.setItem(DEFAULT_NOTE_LENGTH_STORAGE_KEY, defaultLengthSelect.value);
   rerender();
-  updateMenuSummary();
+  updateStatusPill();
 });
 titleInput.addEventListener("input", () => {
   rerender();
@@ -532,6 +615,8 @@ staffToggle.addEventListener("click", () => {
   const expanded = staffToggle.getAttribute("aria-expanded") === "true";
   staffContainer.hidden = expanded;
   staffToggle.setAttribute("aria-expanded", String(!expanded));
+  staffToggle.setAttribute("aria-pressed", String(!expanded));
+  textModeButton.setAttribute("aria-pressed", String(expanded));
   if (!expanded) {
     staffCursorIndex = currentItems.length;
     renderStaff(
@@ -542,7 +627,20 @@ staffToggle.addEventListener("click", () => {
     );
   }
 });
-staffNewLineButton.addEventListener("click", insertLineBreakAtCursor);
+textModeButton.addEventListener("click", () => {
+  staffContainer.hidden = true;
+  staffToggle.setAttribute("aria-expanded", "false");
+  staffToggle.setAttribute("aria-pressed", "false");
+  textModeButton.setAttribute("aria-pressed", "true");
+  input.focus();
+});
+staffNewLineButton.addEventListener("click", () => insertTextAtCursor("|"));
+noteHintChips.addEventListener("click", (event) => {
+  const chip = (event.target as HTMLElement).closest<HTMLButtonElement>(".hint-chip");
+  if (chip?.dataset.insert) {
+    insertTextAtCursor(chip.dataset.insert);
+  }
+});
 staffKeysToggle.addEventListener("click", () => {
   const expanded = staffKeysToggle.getAttribute("aria-expanded") === "true";
   staffKeyboardLegend.hidden = expanded;
@@ -720,14 +818,14 @@ midiTrackSelect.addEventListener("change", () => {
 
 midiDropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
-  midiDropZone.classList.add("midi-drop-zone--active");
+  midiDropZone.classList.add("drop-zone--active");
 });
 midiDropZone.addEventListener("dragleave", () => {
-  midiDropZone.classList.remove("midi-drop-zone--active");
+  midiDropZone.classList.remove("drop-zone--active");
 });
 midiDropZone.addEventListener("drop", (event) => {
   event.preventDefault();
-  midiDropZone.classList.remove("midi-drop-zone--active");
+  midiDropZone.classList.remove("drop-zone--active");
   const file = event.dataTransfer?.files?.[0];
   if (file) {
     void handleMidiFile(file);
@@ -785,7 +883,7 @@ async function handleSaveFile(file: File): Promise<void> {
     }
   });
   rerender();
-  updateMenuSummary();
+  updateStatusPill();
   closeMenu();
 }
 
@@ -799,14 +897,14 @@ loadFileInput.addEventListener("change", () => {
 
 loadDropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
-  loadDropZone.classList.add("midi-drop-zone--active");
+  loadDropZone.classList.add("drop-zone--active");
 });
 loadDropZone.addEventListener("dragleave", () => {
-  loadDropZone.classList.remove("midi-drop-zone--active");
+  loadDropZone.classList.remove("drop-zone--active");
 });
 loadDropZone.addEventListener("drop", (event) => {
   event.preventDefault();
-  loadDropZone.classList.remove("midi-drop-zone--active");
+  loadDropZone.classList.remove("drop-zone--active");
   const file = event.dataTransfer?.files?.[0];
   if (file) {
     void handleSaveFile(file);
@@ -814,5 +912,5 @@ loadDropZone.addEventListener("drop", (event) => {
 });
 
 renderKeySignatureUI();
-updateMenuSummary();
+updateStatusPill();
 update();

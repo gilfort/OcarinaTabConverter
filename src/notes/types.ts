@@ -12,6 +12,17 @@ export interface Note {
   octave: number;
 }
 
+/** True when two notes have the same pitch class, accidental, and octave. */
+export function notesEqual(a: Note, b: Note): boolean {
+  return a.pitchClass === b.pitchClass && a.accidental === b.accidental && a.octave === b.octave;
+}
+
+/**
+ * A note's role within a tie/legato pair (e.g. "C4-D4"): "start" is the first note,
+ * "end" is the second. `null` means the note isn't part of a tie.
+ */
+export type TieRole = "start" | "end";
+
 /** A repeat-barline or alternate-ending ("volta") marker token, e.g. "|:" or "[1". */
 export type RepeatMarker = "repeatStart" | "repeatEnd" | "voltaOne" | "voltaTwo";
 
@@ -35,6 +46,8 @@ export interface ParsedToken {
   lineBreak: boolean;
   /** Set when this token is a repeat barline or volta marker ("|:", ":|", "[1", "[2"). */
   marker: RepeatMarker | null;
+  /** Set when this note is one half of a tie/legato pair entered as e.g. "C4-D4". */
+  tie: TieRole | null;
 }
 
 export interface ParseResult {

@@ -94,6 +94,21 @@ describe("buildMidiFile", () => {
   it("uses the fixed export resolution regardless of caller state", () => {
     expect(EXPORT_TICKS_PER_QUARTER).toBe(480);
   });
+
+  it("writes a same-pitch tie pair as a single continuous note, with no note-off/on between", () => {
+    const items = itemsFor("C4-C4");
+    const bytes = buildMidiFile(items, "quarter");
+    expect(roundTrip(bytes)).toEqual([{ raw: "C4", lengthOverride: "half" }]);
+  });
+
+  it("writes a different-pitch tie pair as two notes back to back, with no gap between them", () => {
+    const items = itemsFor("C4-D4");
+    const bytes = buildMidiFile(items, "quarter");
+    expect(roundTrip(bytes)).toEqual([
+      { raw: "C4", lengthOverride: "quarter" },
+      { raw: "D4", lengthOverride: "quarter" },
+    ]);
+  });
 });
 
 describe("downloadMidiFile", () => {

@@ -1,6 +1,6 @@
 import { NOTE_LENGTH_UNITS, resolveNoteLength, type NoteLength } from "../notes/length";
 import { toAbsoluteSemitone } from "../fingering/normalize";
-import type { Note } from "../notes/types";
+import { notesEqual, type Note } from "../notes/types";
 import type { TabItem } from "../ui/render";
 
 /** Resolution used when exporting, independent of any imported file's own resolution. */
@@ -90,11 +90,21 @@ function durationTicksFor(item: TabItem, defaultNoteLength: NoteLength, ticksPer
   return noteLengthToTicks(length, ticksPerQuarter);
 }
 
+/** Whether `item` is a note that resolved to a fingering and so gets a MIDI note event. */
+function isPlayableNote(item: TabItem): item is TabItem & { token: { note: Note } } {
+  return item.token.note !== null && item.result?.status === "found";
+}
+
 /**
  * Converts a tab's items into MIDI note on/off events at fixed resolution. Mirrors
  * `buildPlaybackSchedule`'s skip/rest/note rules: line breaks and valid markers take no
  * time, rests become silent gaps, and anything unplayable (errors, out-of-range,
  * unsupported, malformed markers) is silence at the default note length.
+ *
+ * Notes are otherwise back-to-back with no gap between note-off and the next note-on, which
+ * already matches a tie/legato pair's "no gap" requirement for two different pitches. The one
+ * special case is a tie pair sharing the same pitch (e.g. "C4-C4"): it's written as a single
+ * note-on/note-off spanning both durations, with no note-off/note-on in between.
  */
 function buildNoteEvents(
   items: readonly TabItem[],
@@ -103,21 +113,43 @@ function buildNoteEvents(
 ): MidiWireEvent[] {
   const events: MidiWireEvent[] = [];
   let tick = 0;
+  let i = 0;
 
-  for (const item of items) {
+  while (i < items.length) {
+    const item = items[i];
+
     if (item.token.lineBreak || (item.token.marker && !item.token.error)) {
+      i++;
       continue;
     }
 
     const duration = durationTicksFor(item, defaultNoteLength, ticksPerQuarter);
+    const next = items[i + 1];
+    const isTiedSamePitch =
+      item.token.tie === "start" &&
+      next?.token.tie === "end" &&
+      isPlayableNote(item) &&
+      isPlayableNote(next) &&
+      notesEqual(item.token.note, next.token.note);
 
-    if (item.token.note && item.result?.status === "found") {
+    if (isTiedSamePitch) {
+      const nextDuration = durationTicksFor(next, defaultNoteLength, ticksPerQuarter);
+      const pitch = noteToMidiPitch(item.token.note);
+      events.push({ tick, order: 1, bytes: [NOTE_ON_STATUS, pitch, NOTE_VELOCITY] });
+      events.push({ tick: tick + duration + nextDuration, order: 0, bytes: [NOTE_OFF_STATUS, pitch, 0] });
+      tick += duration + nextDuration;
+      i += 2;
+      continue;
+    }
+
+    if (isPlayableNote(item)) {
       const pitch = noteToMidiPitch(item.token.note);
       events.push({ tick, order: 1, bytes: [NOTE_ON_STATUS, pitch, NOTE_VELOCITY] });
       events.push({ tick: tick + duration, order: 0, bytes: [NOTE_OFF_STATUS, pitch, 0] });
     }
 
     tick += duration;
+    i++;
   }
 
   return events;

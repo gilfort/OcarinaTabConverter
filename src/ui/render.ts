@@ -200,6 +200,12 @@ function renderItem(
   const cell = document.createElement("div");
   cell.className = "tab-cell";
 
+  if (item.token.tie === "start") {
+    cell.classList.add("tab-cell--tie-start");
+  } else if (item.token.tie === "end") {
+    cell.classList.add("tab-cell--tie-end");
+  }
+
   if (item.token.rest) {
     const length = resolveNoteLength(item.lengthOverride, item.token.rest);
     cell.classList.add("tab-cell--rest", `tab-cell--${length}`);

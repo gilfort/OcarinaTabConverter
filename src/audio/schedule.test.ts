@@ -30,20 +30,20 @@ describe("buildPlaybackSchedule", () => {
     return buildPlaybackSchedule(items, defaultNoteLength, 120);
   }
 
-  it("schedules one event per found note, back to back at 120 BPM (0.5s per quarter)", () => {
+  it("schedules one event per found note, back to back at 120 BPM (0.5s per quarter), each losing a 10ms gap", () => {
     const events = schedule("C4 D4");
 
     expect(events).toHaveLength(2);
-    expect(events[0]).toMatchObject({ startTime: 0, duration: 0.5 });
+    expect(events[0]).toMatchObject({ startTime: 0, duration: 0.49 });
     expect(events[0].frequency).not.toBeNull();
-    expect(events[1]).toMatchObject({ startTime: 0.5, duration: 0.5 });
+    expect(events[1]).toMatchObject({ startTime: 0.5, duration: 0.49 });
   });
 
   it("schedules a rest as silence for its resolved length", () => {
     const events = schedule("C4 R2 D4");
 
     expect(events[1]).toMatchObject({ startTime: 0.5, duration: 1, frequency: null });
-    expect(events[2]).toMatchObject({ startTime: 1.5, duration: 0.5 });
+    expect(events[2]).toMatchObject({ startTime: 1.5, duration: 0.49 });
   });
 
   it("schedules an out-of-range note as silence at the default length, still taking time", () => {
@@ -84,18 +84,53 @@ describe("buildPlaybackSchedule", () => {
     items[0].lengthOverride = "whole";
 
     const events = buildPlaybackSchedule(items, "quarter", 120);
-    expect(events[0].duration).toBe(2);
+    expect(events[0].duration).toBe(1.99);
   });
 
   it("scales durations with tempo", () => {
     const { tokens } = parseNotes("C4");
     const items = buildTabItems(tokens, "12hole");
 
-    expect(buildPlaybackSchedule(items, "quarter", 60)[0].duration).toBe(1);
-    expect(buildPlaybackSchedule(items, "quarter", 240)[0].duration).toBe(0.25);
+    expect(buildPlaybackSchedule(items, "quarter", 60)[0].duration).toBe(0.99);
+    expect(buildPlaybackSchedule(items, "quarter", 240)[0].duration).toBe(0.24);
   });
 
   it("returns no events for an empty sequence", () => {
     expect(schedule("")).toHaveLength(0);
+  });
+
+  it("clamps the gap to half the note's duration for very short notes", () => {
+    const { tokens } = parseNotes("C4");
+    const items = buildTabItems(tokens, "12hole");
+    items[0].lengthOverride = "eighth";
+
+    // At a very fast tempo, an eighth note's duration is well under 20ms, so the
+    // full 10ms gap would exceed half its length and must be clamped.
+    const events = buildPlaybackSchedule(items, "quarter", 6000);
+    const duration = events[0].duration;
+    const rawDuration = (60 / 6000) * 0.5;
+    expect(duration).toBeCloseTo(rawDuration / 2);
+  });
+
+  it("gives a tie pair with different pitches no gap between them (legato)", () => {
+    const events = schedule("C4-D4");
+
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatchObject({ startTime: 0, duration: 0.5 });
+    expect(events[1]).toMatchObject({ startTime: 0.5, duration: 0.49 });
+  });
+
+  it("schedules a tie pair with the same pitch as one continuous tone, no retrigger", () => {
+    const events = schedule("C4-C4");
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ startTime: 0, duration: 0.99 });
+  });
+
+  it("still applies the normal gap after a tie pair, to whatever follows", () => {
+    const events = schedule("C4-D4 E4");
+
+    expect(events).toHaveLength(3);
+    expect(events[2]).toMatchObject({ startTime: 1, duration: 0.49 });
   });
 });

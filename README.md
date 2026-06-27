@@ -16,6 +16,7 @@ A small, fast, **no-backend** web app: enter notes as text or on a clickable sta
 | 🪈 | **Two ocarina types** | 12-hole and double-chamber ocarina, each with their own fingering chart and playable range |
 | 🎚️ | **Per-note length** | Override any note's length (eighth/quarter/half/whole) independently of the global default |
 | 🔁 | **Repeats & voltas** | `|: ... :|` repeat barlines and `[1` / `[2` alternate endings, expanded automatically for playback/export |
+| 🎶 | **Ties & legato** | `C4-C4` for a held tone, `C4-D4` for legato — no audible gap or retrigger between the pair |
 | ↩️ | **Manual line breaks** | Insert `|` to force a new line in the rendered tab |
 | 🎹 | **Key signatures** | Pick sharps/flats per pitch class; unmarked notes inherit the signature automatically |
 | ▶️ | **Web Audio playback** | Play / Pause / Stop the entered sequence, synthesized in the browser |
@@ -37,6 +38,7 @@ C4 D4 E4 F4 G4 A4 B4 C5
 | `C4`, `D#4`, `Eb4` | Note name + optional accidental (`#` sharp, `b` flat, `n` force natural) + octave |
 | `C` (no octave) | Defaults to octave 4 |
 | `R`, `R2`, `R4`, `R8` | Rest (whole / half / quarter / eighth) |
+| `C4-D4` | Tie/legato pair — `C4-C4` is one continuous tone, `C4-D4` is two notes with no gap between them |
 | `\|` | Manual line break in the rendered tab |
 | `\|:` … `:\|` | Repeat block |
 | `[1` / `[2` | First/second-ending (volta) markers inside a repeat |
